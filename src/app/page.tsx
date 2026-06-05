@@ -50,13 +50,14 @@ export default function Home() {
           <div className="flex min-w-0 flex-col justify-center">
             <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-50 px-3 py-1.5 text-sm font-bold text-emerald-700">
               <Sparkles size={16} />
-              Browser-only PDF tools
+              Private PDF workbench
             </div>
             <h1 className="m-0 max-w-3xl text-4xl font-black leading-[1.04] tracking-normal text-slate-950 sm:text-5xl lg:text-6xl">
-              Every PDF tool you need, <span className="text-emerald-600">right here.</span>
+              Work on PDFs without <span className="text-emerald-600">giving them away.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-base font-medium leading-relaxed text-slate-600 sm:text-lg">
-              Merge, split, sign, compress, convert, and organize PDFs. Your files stay on your device; the server only serves the app.
+              Merge, extract, sign, compress, convert, and clean up documents directly in your browser.
+              The app loads from the web; your files stay on your device.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -64,18 +65,18 @@ export default function Home() {
                 href="/merge-pdf"
               >
                 <Files size={18} />
-                Merge PDFs
+                Open Merge Tool
               </Link>
               <Link
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-800 hover:border-emerald-500/35 hover:bg-emerald-50"
                 href="/sign-pdf"
               >
                 <FileSignature size={18} />
-                Sign PDF
+                Add a Signature
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
-              {["100% local", "No file upload", "Free to use"].map((item) => (
+              {["Runs in your browser", "No upload step", "Built for quick edits"].map((item) => (
                 <span
                   key={item}
                   className="inline-flex min-h-9 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm"
@@ -95,7 +96,7 @@ export default function Home() {
               </div>
               <div className="absolute right-0 top-8 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 shadow-lg">
                 <ShieldCheck className="text-emerald-600" size={17} />
-                Files stay with you
+                Your files stay local
               </div>
             </div>
           </div>
@@ -104,9 +105,9 @@ export default function Home() {
 
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
-          <h2 className="m-0 text-2xl font-black tracking-normal">All tools</h2>
+          <h2 className="m-0 text-2xl font-black tracking-normal">Tools for everyday PDF work</h2>
           <p className="m-0 mt-1 text-sm font-semibold text-slate-500">
-            {toolCatalog.length} tools · {toolCategories.length} categories
+            {toolCatalog.length} focused tools · {toolCategories.length} practical categories
           </p>
         </div>
       </div>

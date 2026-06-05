@@ -39,7 +39,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Merge",
     category: "Organize",
     description: "Gabungkan beberapa PDF menjadi satu dokumen.",
-    homeDescription: "Combine multiple PDFs into one tidy document.",
+    homeDescription: "Bring separate files into one clean PDF in the order you choose.",
   },
   {
     id: "extract",
@@ -48,7 +48,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Extract",
     category: "Organize",
     description: "Ambil halaman tertentu dari satu PDF.",
-    homeDescription: "Separate one PDF into selected pages or ranges.",
+    homeDescription: "Pull out only the pages you need and leave the rest behind.",
   },
   {
     id: "organize",
@@ -57,7 +57,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Organize",
     category: "Organize",
     description: "Hapus, urutkan, duplikasi, dan susun halaman.",
-    homeDescription: "Reorder, delete, duplicate, and sort pages.",
+    homeDescription: "Rebuild page order, remove extras, or duplicate pages locally.",
   },
   {
     id: "rotate",
@@ -66,7 +66,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Rotate",
     category: "Organize",
     description: "Putar halaman terpilih ke orientasi yang benar.",
-    homeDescription: "Turn pages to the right orientation.",
+    homeDescription: "Fix sideways or upside-down pages before you share the file.",
   },
   {
     id: "pdf-to-image",
@@ -75,7 +75,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "PDF to Image",
     category: "Convert",
     description: "Render halaman PDF menjadi PNG atau JPEG.",
-    homeDescription: "Export a PDF page as a PNG or JPG.",
+    homeDescription: "Turn a PDF page into an image for slides, chats, or previews.",
   },
   {
     id: "image-to-pdf",
@@ -84,7 +84,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Image to PDF",
     category: "Convert",
     description: "Ubah gambar PNG/JPEG menjadi dokumen PDF.",
-    homeDescription: "Turn photos and scans into a PDF.",
+    homeDescription: "Bundle screenshots, scans, and photos into a single PDF.",
   },
   {
     id: "watermark",
@@ -93,7 +93,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Watermark",
     category: "Edit & Sign",
     description: "Tambahkan watermark teks ke halaman PDF.",
-    homeDescription: "Stamp text across PDF pages.",
+    homeDescription: "Place a clear text mark across pages before distribution.",
   },
   {
     id: "page-numbers",
@@ -102,7 +102,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Page Numbers",
     category: "Edit & Sign",
     description: "Tambahkan nomor halaman ke PDF.",
-    homeDescription: "Add page numbers to the document.",
+    homeDescription: "Add readable numbering so long documents are easier to reference.",
   },
   {
     id: "signature",
@@ -111,7 +111,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Signature",
     category: "Edit & Sign",
     description: "Tempel gambar tanda tangan ke halaman PDF.",
-    homeDescription: "Place a signature image on a PDF.",
+    homeDescription: "Drop in a signature image without printing or scanning again.",
   },
   {
     id: "metadata",
@@ -120,7 +120,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Metadata",
     category: "Edit & Sign",
     description: "Ubah title, author, subject, dan keywords.",
-    homeDescription: "Update PDF title, author, and keywords.",
+    homeDescription: "Clean up document details before archiving or sending.",
   },
   {
     id: "forms",
@@ -129,7 +129,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Forms",
     category: "Edit & Sign",
     description: "Isi field form teks dan flatten hasilnya.",
-    homeDescription: "Fill native AcroForm text fields.",
+    homeDescription: "Complete text fields and flatten the result into a final file.",
   },
   {
     id: "layout",
@@ -138,7 +138,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Crop PDF",
     category: "Layout",
     description: "Pangkas margin halaman PDF.",
-    homeDescription: "Trim margins and tidy up the frame.",
+    homeDescription: "Trim empty edges and tighten the visible page area.",
     defaultLayoutAction: "crop",
   },
   {
@@ -148,7 +148,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Resize PDF",
     category: "Layout",
     description: "Ubah ukuran halaman ke A4, Letter, atau Square.",
-    homeDescription: "Fit pages to standard paper sizes.",
+    homeDescription: "Resize pages for printing, sharing, or consistent formatting.",
     defaultLayoutAction: "resize",
   },
   {
@@ -158,7 +158,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "N-up PDF",
     category: "Layout",
     description: "Susun 2 atau 4 halaman ke satu halaman baru.",
-    homeDescription: "Place multiple pages on each sheet.",
+    homeDescription: "Fit multiple pages onto each sheet for compact handouts.",
     defaultLayoutAction: "nup",
   },
   {
@@ -168,7 +168,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "Compress",
     category: "Optimize",
     description: "Optimasi ringan ukuran file di browser.",
-    homeDescription: "Resave and optimize PDF structure locally.",
+    homeDescription: "Resave and streamline the PDF without server-side processing.",
   },
   {
     id: "history",
@@ -177,7 +177,7 @@ export const toolCatalog: ToolCatalogItem[] = [
     shortLabel: "History",
     category: "Local",
     description: "Lihat hasil terakhir yang tersimpan lokal di IndexedDB.",
-    homeDescription: "Access recent results stored on this device.",
+    homeDescription: "Revisit recent results saved in this browser only.",
   },
 ];
 
