@@ -79,7 +79,16 @@
 }
 
 .dropzone {
-  @apply grid gap-3 rounded-lg border border-dashed border-emerald-500/45 bg-emerald-100/30 p-4;
+  @apply grid cursor-pointer justify-items-center gap-4 rounded-lg border border-dashed border-emerald-500/45 bg-emerald-100/30 p-6 text-center transition hover:border-emerald-500/70 hover:bg-emerald-100/45;
+}
+
+.dropzone:focus-visible {
+  outline: 3px solid rgb(16 185 129 / 35%);
+  outline-offset: 3px;
+}
+
+.dropzone > svg {
+  @apply text-slate-950;
 }
 
 .dropzone h2,

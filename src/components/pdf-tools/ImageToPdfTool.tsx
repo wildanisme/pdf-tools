@@ -51,10 +51,10 @@ export function ImageToPdfTool() {
       <section className={styles.toolWorkbench} aria-label="PDF tools workspace">
         <div className={styles.primaryColumn}>
           <section className={styles.documentPanel} aria-label="Images and upload">
-            <div className={styles.dropzone} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void handleImageFiles(event.dataTransfer.files); }}>
+            <div className={styles.dropzone} role="button" tabIndex={0} onClick={() => imageInputRef.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); imageInputRef.current?.click(); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void handleImageFiles(event.dataTransfer.files); }}>
               <Upload size={24} />
               <div><h2>Upload images</h2><p>Tambahkan PNG, JPEG, atau WebP. Gambar tetap diproses di browser.</p></div>
-              <button className={styles.secondaryButton} type="button" onClick={() => imageInputRef.current?.click()}>Pilih gambar</button>
+              <button className={styles.secondaryButton} type="button" onClick={(event) => { event.stopPropagation(); imageInputRef.current?.click(); }}>Pilih gambar</button>
               <input ref={imageInputRef} className={styles.hiddenInput} type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleImageInputChange} />
             </div>
             <div className={styles.fileListHeader}><span>Images</span><span>{images.length} file</span></div>

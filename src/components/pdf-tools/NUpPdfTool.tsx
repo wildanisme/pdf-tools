@@ -45,6 +45,15 @@ export function NUpPdfTool() {
 
               <div
                 className={styles.dropzone}
+                role="button"
+                tabIndex={0}
+                onClick={() => pdfInputRef.current?.click()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    pdfInputRef.current?.click();
+                  }
+                }}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
@@ -56,7 +65,7 @@ export function NUpPdfTool() {
                   <h2>Upload PDF</h2>
                   <p>Drag-and-drop PDF atau pilih file. Dokumen tidak dikirim ke server.</p>
                 </div>
-                <button className={styles.secondaryButton} type="button" onClick={() => pdfInputRef.current?.click()}>
+                <button className={styles.secondaryButton} type="button" onClick={(event) => { event.stopPropagation(); pdfInputRef.current?.click(); }}>
                   Pilih PDF
                 </button>
                 <input ref={pdfInputRef} className={styles.hiddenInput} type="file" accept="application/pdf,.pdf" multiple onChange={handlePdfInputChange} />
