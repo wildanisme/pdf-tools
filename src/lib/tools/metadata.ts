@@ -11,7 +11,7 @@ export function getPdfToolMetadata(slug: ToolSlug): Metadata {
   }
 
   return {
-    title: `${tool.label} | Privacy PDF Tools`,
-    description: `${tool.description} Files are processed locally in your browser.`,
+    title: tool.label,
+    description: tool.seoDescription,
   };
 }

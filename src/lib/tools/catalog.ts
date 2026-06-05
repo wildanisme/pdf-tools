@@ -28,6 +28,7 @@ export type ToolCatalogItem = {
   category: ToolCategory;
   description: string;
   homeDescription: string;
+  seoDescription: string;
   defaultLayoutAction?: "crop" | "resize" | "blank" | "nup";
 };
 
@@ -40,6 +41,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Organize",
     description: "Gabungkan beberapa PDF menjadi satu dokumen.",
     homeDescription: "Bring separate files into one clean PDF in the order you choose.",
+    seoDescription:
+      "Combine multiple PDF files into a single, organized document. Easily reorder files and merge them seamlessly in your browser. No uploads required.",
   },
   {
     id: "extract",
@@ -49,6 +52,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Organize",
     description: "Ambil halaman tertentu dari satu PDF.",
     homeDescription: "Pull out only the pages you need and leave the rest behind.",
+    seoDescription:
+      "Select and extract specific pages from any PDF document. Create a new, smaller PDF containing only the pages you need, all done locally.",
   },
   {
     id: "organize",
@@ -58,6 +63,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Organize",
     description: "Hapus, urutkan, duplikasi, dan susun halaman.",
     homeDescription: "Rebuild page order, remove extras, or duplicate pages locally.",
+    seoDescription:
+      "Easily reorder, rotate, or delete pages within your PDF. A simple, client-side tool for managing your document's structure.",
   },
   {
     id: "rotate",
@@ -67,6 +74,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Organize",
     description: "Putar halaman terpilih ke orientasi yang benar.",
     homeDescription: "Fix sideways or upside-down pages before you share the file.",
+    seoDescription:
+      "Quickly fix the orientation of your PDF pages. Rotate individual or all pages to be upright and save the corrected file locally.",
   },
   {
     id: "pdf-to-image",
@@ -76,6 +85,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Convert",
     description: "Render halaman PDF menjadi PNG atau JPEG.",
     homeDescription: "Turn a PDF page into an image for slides, chats, or previews.",
+    seoDescription:
+      "Convert pages from a PDF document into high-quality JPG or PNG images. Perfect for presentations, social media, or web use.",
   },
   {
     id: "image-to-pdf",
@@ -85,6 +96,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Convert",
     description: "Ubah gambar PNG/JPEG menjadi dokumen PDF.",
     homeDescription: "Bundle screenshots, scans, and photos into a single PDF.",
+    seoDescription:
+      "Convert JPG, PNG, and other image formats into a universal PDF document. Combine multiple images into a single file for easy sharing and archiving.",
   },
   {
     id: "watermark",
@@ -94,6 +107,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Edit & Sign",
     description: "Tambahkan watermark teks ke halaman PDF.",
     homeDescription: "Place a clear text mark across pages before distribution.",
+    seoDescription:
+      "Add a text watermark to your PDF documents to protect your work. Customize the text, opacity, and position, all on your local device.",
   },
   {
     id: "page-numbers",
@@ -103,6 +118,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Edit & Sign",
     description: "Tambahkan nomor halaman ke PDF.",
     homeDescription: "Add readable numbering so long documents are easier to reference.",
+    seoDescription:
+      "Add page numbers to your PDF for easy reference. Customize the position, format, and range of your page numbers securely in your browser.",
   },
   {
     id: "signature",
@@ -112,6 +129,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Edit & Sign",
     description: "Tempel gambar tanda tangan ke halaman PDF.",
     homeDescription: "Drop in a signature image without printing or scanning again.",
+    seoDescription:
+      "Electronically sign your PDF documents in seconds. Draw your signature or upload an image and place it anywhere on the document. No uploads needed.",
   },
   {
     id: "metadata",
@@ -121,6 +140,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Edit & Sign",
     description: "Ubah title, author, subject, dan keywords.",
     homeDescription: "Clean up document details before archiving or sending.",
+    seoDescription:
+      "View and edit the metadata of your PDF files. Change the title, author, subject, and keywords to clean up your document's properties locally.",
   },
   {
     id: "forms",
@@ -130,6 +151,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Edit & Sign",
     description: "Isi field form teks dan flatten hasilnya.",
     homeDescription: "Complete text fields and flatten the result into a final file.",
+    seoDescription:
+      "Quickly fill out PDF forms directly in your browser. Enter text into form fields and create a non-editable, flattened PDF ready for sharing.",
   },
   {
     id: "layout",
@@ -139,6 +162,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Layout",
     description: "Pangkas margin halaman PDF.",
     homeDescription: "Trim empty edges and tighten the visible page area.",
+    seoDescription:
+      "Trim the margins and remove unwanted white space from your PDF pages. Define a crop area to create a clean, professional-looking document.",
     defaultLayoutAction: "crop",
   },
   {
@@ -149,6 +174,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Layout",
     description: "Ubah ukuran halaman ke A4, Letter, atau Square.",
     homeDescription: "Resize pages for printing, sharing, or consistent formatting.",
+    seoDescription:
+      "Change the page size of your PDF documents. Easily resize to standard formats like A4, Letter, or custom dimensions for printing or viewing.",
     defaultLayoutAction: "resize",
   },
   {
@@ -159,6 +186,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Layout",
     description: "Susun 2 atau 4 halaman ke satu halaman baru.",
     homeDescription: "Fit multiple pages onto each sheet for compact handouts.",
+    seoDescription:
+      "Arrange multiple PDF pages onto a single sheet (2-up or 4-up). A powerful tool for creating handouts and saving paper, processed locally.",
     defaultLayoutAction: "nup",
   },
   {
@@ -169,6 +198,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Optimize",
     description: "Optimasi ringan ukuran file di browser.",
     homeDescription: "Resave and streamline the PDF without server-side processing.",
+    seoDescription:
+      "Reduce the file size of your PDF documents for easier sharing and storage. Our tool optimizes your PDF without compromising quality, right in your browser.",
   },
   {
     id: "history",
@@ -178,6 +209,8 @@ export const toolCatalog: ToolCatalogItem[] = [
     category: "Local",
     description: "Lihat hasil terakhir yang tersimpan lokal di IndexedDB.",
     homeDescription: "Revisit recent results saved in this browser only.",
+    seoDescription:
+      "Access your recently processed files. Your local history is stored securely in your browser's IndexedDB and is never uploaded.",
   },
 ];
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   BadgeCheck,
   Crop,
@@ -21,6 +22,12 @@ import Link from "next/link";
 import type { ComponentType } from "react";
 import type { PdfToolId } from "@/lib/pdf/types";
 import { toolCatalog, toolCategories } from "@/lib/tools/catalog";
+
+export const metadata: Metadata = {
+  title: "Privacy-First PDF Tools for Modern Workflows",
+  description:
+    "Work on PDFs without giving them away. A complete suite of 20+ free, client-side PDF tools to merge, extract, sign, compress, and convert documents directly in your browser.",
+};
 
 const iconMap: Record<PdfToolId | "crop" | "resize" | "nup", ComponentType<{ className?: string; size?: number }>> = {
   merge: Files,
