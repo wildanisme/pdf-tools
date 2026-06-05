@@ -265,6 +265,13 @@ export function SignPdfTool() {
     setDrawSignatureHasInk(false);
   }
 
+  function removeSignature() {
+    clearDrawnSignature();
+    setSignatureImage(null);
+    setSignaturePreviewUrl(null);
+    setSignaturePlacement({ x: 0.62, y: 0.72, width: 0.24 });
+  }
+
   function updateSignatureSize(sizePercent: number) {
     const nextWidth = clamp(sizePercent / 100, 0.08, 0.62);
     setSignaturePlacement((current) => clampPlacement({ ...current, width: nextWidth }, signatureAspectRatio));
@@ -496,8 +503,13 @@ export function SignPdfTool() {
             <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-extrabold text-slate-600">Draw signature</span>
-                <button className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-extrabold text-slate-700 hover:border-emerald-500/35 hover:bg-emerald-50 disabled:opacity-45" type="button" onClick={clearDrawnSignature} disabled={!drawSignatureHasInk}>
-                  Clear
+                <button
+                  className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-extrabold text-slate-700 hover:border-emerald-500/35 hover:bg-emerald-50 disabled:opacity-45"
+                  type="button"
+                  onClick={() => { if (signatureImage) { removeSignature(); } else { clearDrawnSignature(); } }}
+                  disabled={!drawSignatureHasInk && !signatureImage}
+                >
+                  {signatureImage ? "Hapus" : "Clear"}
                 </button>
               </div>
               <canvas
@@ -517,8 +529,19 @@ export function SignPdfTool() {
             </div>
             {signaturePreviewUrl ? (
               <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-                <div className="grid min-h-20 place-items-center rounded-md border border-dashed border-emerald-500/35 bg-white p-2">
-                  <span className="block h-16 w-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${signaturePreviewUrl})` }} aria-hidden="true" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="grid min-h-20 flex-1 place-items-center rounded-md border border-dashed border-emerald-500/35 bg-white p-2">
+                    <span className="block h-16 w-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${signaturePreviewUrl})` }} aria-hidden="true" />
+                  </div>
+                  <button
+                    className="flex size-8 shrink-0 items-center justify-center rounded-md border border-red-200 bg-white text-red-600 hover:bg-red-50"
+                    type="button"
+                    onClick={removeSignature}
+                    aria-label="Hapus signature"
+                    title="Hapus signature"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
                 <span className={styles.helpText}>{signatureImage?.name}</span>
               </div>
