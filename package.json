@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@next/third-parties": "^16.2.7",
     "lucide-react": "latest",
     "next": "latest",
     "pdf-lib": "latest",

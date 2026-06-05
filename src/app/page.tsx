@@ -57,7 +57,7 @@ export default function Home() {
           <div className="flex min-w-0 flex-col justify-center">
             <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-50 px-3 py-1.5 text-sm font-bold text-emerald-700">
               <Sparkles size={16} />
-              Private PDF workbench
+              The Best PDF Tools Number 2 In The Universe
             </div>
             <h1 className="m-0 max-w-3xl text-4xl font-black leading-[1.04] tracking-normal text-slate-950 sm:text-5xl lg:text-6xl">
               Work on PDFs without <span className="text-emerald-600">giving them away.</span>

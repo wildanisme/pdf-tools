@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { MainShell } from "@/components/main-shell/MainShell";
+import Footer from "@/components/footer/Footer";
 import "./globals.css";
+import { GoogleTagManager } from "@next/third-parties/google";
 
 export const metadata: Metadata = {
   title: {
@@ -23,8 +25,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
+      <GoogleTagManager gtmId="G-MVRZ88KRVF" />
       <body>
-        <MainShell>{children}</MainShell>
+        <MainShell>
+          {children}
+          <Footer />
+        </MainShell>
       </body>
     </html>
   );
