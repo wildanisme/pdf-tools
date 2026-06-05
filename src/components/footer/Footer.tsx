@@ -15,6 +15,7 @@ const Footer = () => {
           <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Company</h3>
           <ul className="mt-4 space-y-4">
             <li><a href="https://summitct.co.id?utm_source=pdf.wildanisme.com" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">Summit Citra Teknologi</a></li>
+            <li><a href="#" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Motekar Teknologi Indonesia</a></li>
             <li><a href="#" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">About Us</a></li>
           </ul>
         </div>
