@@ -3,4 +3,4 @@ User-agent: *
 Allow: /
 
 # Point to the sitemap
-Sitemap: https://privacy-pdf.com/sitemap.xml
+Sitemap: https://pdf.wildanisme.com/sitemap.xml
