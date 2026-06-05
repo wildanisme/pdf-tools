@@ -16,6 +16,23 @@ export type MetadataInput = {
   keywords?: string;
 };
 
+export type WatermarkPlacement = "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "custom" | "tiled";
+
+export type WatermarkOptions = {
+  mode: "text" | "image";
+  text?: string;
+  image?: ImageInput | null;
+  opacity: number;
+  fontSize: number;
+  rotation: number;
+  color: string;
+  placement: WatermarkPlacement;
+  pageIndexes?: number[];
+  xRatio?: number;
+  yRatio?: number;
+  imageWidthRatio?: number;
+};
+
 const PAGE_SIZES: Record<Exclude<PageSizePreset, "original">, [number, number]> = {
   a4: [595.28, 841.89],
   letter: [612, 792],
@@ -135,31 +152,88 @@ export async function imagesToPdf(
 
 export async function addWatermark(
   bytes: Uint8Array,
-  text: string,
-  options: { opacity: number; fontSize: number },
+  options: WatermarkOptions,
 ): Promise<PdfProcessingResult> {
   const pdf = await PDFDocument.load(bytes);
   const font = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const safeText = text.trim();
+  const pageIndexes = options.pageIndexes?.length ? options.pageIndexes : pdf.getPageIndices();
+  const opacity = clamp(options.opacity, 0.02, 1);
+  const rotation = degrees(options.rotation);
+  const watermarkColor = parseWatermarkColor(options.color);
 
-  if (!safeText) {
+  validatePageIndexes(pageIndexes, pdf.getPageCount());
+
+  if (options.mode === "text" && !options.text?.trim()) {
     throw new Error("Teks watermark tidak boleh kosong.");
   }
 
-  for (const page of pdf.getPages()) {
+  if (options.mode === "image" && !options.image) {
+    throw new Error("Pilih gambar watermark terlebih dahulu.");
+  }
+
+  if (options.image?.type === "image/webp") {
+    throw new Error("Watermark WebP belum didukung. Gunakan PNG atau JPEG.");
+  }
+
+  const watermarkImage = options.image
+    ? options.image.type === "image/png"
+      ? await pdf.embedPng(options.image.bytes)
+      : await pdf.embedJpg(options.image.bytes)
+    : null;
+
+  for (const pageIndex of pageIndexes) {
+    const page = pdf.getPage(pageIndex);
     const width = page.getWidth();
     const height = page.getHeight();
-    const textWidth = font.widthOfTextAtSize(safeText, options.fontSize);
 
-    page.drawText(safeText, {
-      x: (width - textWidth) / 2,
-      y: height / 2,
-      size: options.fontSize,
-      font,
-      color: rgb(0.05, 0.48, 0.34),
-      opacity: options.opacity,
-      rotate: degrees(-35),
-    });
+    if (options.mode === "image" && watermarkImage) {
+      const itemWidth = width * clamp(options.imageWidthRatio ?? 0.32, 0.08, 0.82);
+      const itemHeight = itemWidth * (watermarkImage.height / watermarkImage.width);
+
+      if (options.placement === "tiled") {
+        for (let y = -itemHeight; y < height + itemHeight; y += itemHeight + 96) {
+          for (let x = -itemWidth; x < width + itemWidth; x += itemWidth + 120) {
+            page.drawImage(watermarkImage, { x, y, width: itemWidth, height: itemHeight, opacity, rotate: rotation });
+          }
+        }
+      } else {
+        const position = getWatermarkPosition(options, width, height, itemWidth, itemHeight);
+        page.drawImage(watermarkImage, { ...position, width: itemWidth, height: itemHeight, opacity, rotate: rotation });
+      }
+
+      continue;
+    }
+
+    const safeText = options.text?.trim() ?? "";
+    const textWidth = font.widthOfTextAtSize(safeText, options.fontSize);
+    const textHeight = options.fontSize;
+
+    if (options.placement === "tiled") {
+      for (let y = -textHeight; y < height + textHeight; y += options.fontSize * 3.1) {
+        for (let x = -textWidth; x < width + textWidth; x += Math.max(textWidth + 120, 220)) {
+          page.drawText(safeText, {
+            x,
+            y,
+            size: options.fontSize,
+            font,
+            color: watermarkColor,
+            opacity,
+            rotate: rotation,
+          });
+        }
+      }
+    } else {
+      const position = getWatermarkPosition(options, width, height, textWidth, textHeight);
+
+      page.drawText(safeText, {
+        ...position,
+        size: options.fontSize,
+        font,
+        color: watermarkColor,
+        opacity,
+        rotate: rotation,
+      });
+    }
   }
 
   return savePdf(pdf, "watermarked.pdf");
@@ -372,6 +446,58 @@ async function savePdf(pdf: PDFDocument, fileName: string): Promise<PdfProcessin
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function parseWatermarkColor(color: string) {
+  const match = color.trim().match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+
+  if (!match) {
+    return rgb(0.05, 0.48, 0.34);
+  }
+
+  return rgb(
+    Number.parseInt(match[1], 16) / 255,
+    Number.parseInt(match[2], 16) / 255,
+    Number.parseInt(match[3], 16) / 255,
+  );
+}
+
+function getWatermarkPosition(
+  options: Pick<WatermarkOptions, "placement" | "xRatio" | "yRatio">,
+  pageWidth: number,
+  pageHeight: number,
+  itemWidth: number,
+  itemHeight: number,
+) {
+  const margin = 36;
+
+  if (options.placement === "custom") {
+    return {
+      x: clamp((options.xRatio ?? 0.5) * pageWidth, 0, Math.max(0, pageWidth - itemWidth)),
+      y: clamp(pageHeight - ((options.yRatio ?? 0.5) * pageHeight) - itemHeight, 0, Math.max(0, pageHeight - itemHeight)),
+    };
+  }
+
+  if (options.placement === "top-left") {
+    return { x: margin, y: pageHeight - itemHeight - margin };
+  }
+
+  if (options.placement === "top-right") {
+    return { x: pageWidth - itemWidth - margin, y: pageHeight - itemHeight - margin };
+  }
+
+  if (options.placement === "bottom-left") {
+    return { x: margin, y: margin };
+  }
+
+  if (options.placement === "bottom-right") {
+    return { x: pageWidth - itemWidth - margin, y: margin };
+  }
+
+  return {
+    x: (pageWidth - itemWidth) / 2,
+    y: (pageHeight - itemHeight) / 2,
+  };
 }
 
 function validatePageIndexes(pageIndexes: number[], totalPages: number) {

@@ -72,7 +72,15 @@ describe("advanced PDF operations", () => {
   });
 
   it("adds watermark and page numbers without changing page count", async () => {
-    const watermarked = await addWatermark(await createPdf(2), "PRIVATE", { opacity: 0.25, fontSize: 36 });
+    const watermarked = await addWatermark(await createPdf(2), {
+      mode: "text",
+      text: "PRIVATE",
+      opacity: 0.25,
+      fontSize: 36,
+      rotation: -35,
+      color: "#0d7a56",
+      placement: "center",
+    });
     const numbered = await addPageNumbers(watermarked.bytes, { prefix: "Page ", startAt: 1 });
     const pdf = await PDFDocument.load(numbered.bytes);
 
