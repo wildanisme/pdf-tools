@@ -22,6 +22,9 @@ export function SignPdfTool() {
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const previewPageRef = useRef<HTMLDivElement>(null);
   const pointerOffsetRef = useRef({ x: 0, y: 0 });
+  const drawCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingSignatureRef = useRef(false);
+  const drawSignatureHasInkRef = useRef(false);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const [signatureImage, setSignatureImage] = useState<ImageInput | null>(null);
   const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
@@ -31,12 +34,20 @@ export function SignPdfTool() {
   const [pagePreviewUrl, setPagePreviewUrl] = useState<string | null>(null);
   const [pagePreviewStatus, setPagePreviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pagePreviewError, setPagePreviewError] = useState<string | null>(null);
+  const [drawSignatureHasInk, setDrawSignatureHasInk] = useState(false);
   const [pdfImagePage, setPdfImagePage] = useState(1);
   const signatureSizePercent = Math.round(signaturePlacement.width * 100);
 
   useEffect(() => {
     setPdfImagePage(1);
   }, [tool.activeDocument?.id]);
+
+  useEffect(() => {
+    prepareSignatureCanvas();
+
+    window.addEventListener("resize", prepareSignatureCanvas);
+    return () => window.removeEventListener("resize", prepareSignatureCanvas);
+  }, []);
 
   useEffect(() => {
     if (!signatureImage) {
@@ -122,6 +133,106 @@ export function SignPdfTool() {
     event.target.value = "";
   }
 
+  function prepareSignatureCanvas() {
+    const canvas = drawCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(320, Math.round(rect.width));
+    const height = Math.max(144, Math.round(rect.height));
+    const ratio = window.devicePixelRatio || 1;
+    const existingImage = canvas.toDataURL("image/png");
+
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.lineWidth = 3;
+    context.strokeStyle = "#020617";
+
+    if (drawSignatureHasInkRef.current) {
+      const image = new Image();
+      image.onload = () => context.drawImage(image, 0, 0, width, height);
+      image.src = existingImage;
+    }
+  }
+
+  function getCanvasPoint(event: PointerEvent<HTMLCanvasElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  function handleDrawPointerDown(event: PointerEvent<HTMLCanvasElement>) {
+    const context = event.currentTarget.getContext("2d");
+    if (!context) return;
+
+    const point = getCanvasPoint(event);
+    isDrawingSignatureRef.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+  }
+
+  function handleDrawPointerMove(event: PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawingSignatureRef.current) return;
+
+    const context = event.currentTarget.getContext("2d");
+    if (!context) return;
+
+    const point = getCanvasPoint(event);
+    context.lineTo(point.x, point.y);
+    context.stroke();
+    drawSignatureHasInkRef.current = true;
+    setDrawSignatureHasInk(true);
+  }
+
+  function handleDrawPointerUp(event: PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawingSignatureRef.current) return;
+
+    isDrawingSignatureRef.current = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    void useDrawnSignature();
+  }
+
+  async function useDrawnSignature() {
+    const canvas = drawCanvasRef.current;
+    if (!canvas || !drawSignatureHasInkRef.current) return;
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) {
+      tool.setError("Gagal membuat gambar tanda tangan.");
+      return;
+    }
+
+    setSignatureImage({
+      bytes: new Uint8Array(await blob.arrayBuffer()),
+      type: "image/png",
+      name: "drawn-signature.png",
+    });
+    setSignaturePlacement({ x: 0.62, y: 0.72, width: 0.24 });
+  }
+
+  function clearDrawnSignature() {
+    const canvas = drawCanvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    drawSignatureHasInkRef.current = false;
+    setDrawSignatureHasInk(false);
+  }
+
   function updateSignatureSize(sizePercent: number) {
     const nextWidth = clamp(sizePercent / 100, 0.08, 0.62);
     setSignaturePlacement((current) => clampPlacement({ ...current, width: nextWidth }, signatureAspectRatio));
@@ -179,22 +290,8 @@ export function SignPdfTool() {
     setSignatureInteraction(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }
-}
-
-function clampPlacement(placement: SignaturePlacement, aspectRatio: number): SignaturePlacement {
-  const height = placement.width / Math.max(0.1, aspectRatio);
-
-  return {
-    width: clamp(placement.width, 0.08, 0.62),
-    x: clamp(placement.x, 0, Math.max(0, 1 - placement.width)),
-    y: clamp(placement.y, 0, Math.max(0, 1 - height)),
-  };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
 
   return (
     <main className={styles.workspace}>
@@ -364,6 +461,24 @@ function clamp(value: number, min: number, max: number) {
             <TextField label="Output name" value={tool.outputName} onChange={tool.setOutputName} placeholder="custom-result.pdf" />
             <button className={styles.secondaryButton} type="button" onClick={() => signatureInputRef.current?.click()}>Pilih signature</button>
             <input ref={signatureInputRef} className={styles.hiddenInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleSignatureInputChange} />
+            <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-extrabold text-slate-600">Draw signature</span>
+                <button className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-extrabold text-slate-700 hover:border-emerald-500/35 hover:bg-emerald-50 disabled:opacity-45" type="button" onClick={clearDrawnSignature} disabled={!drawSignatureHasInk}>
+                  Clear
+                </button>
+              </div>
+              <canvas
+                ref={drawCanvasRef}
+                className="h-36 w-full touch-none rounded-md border border-dashed border-emerald-500/40 bg-white"
+                aria-label="Draw signature"
+                onPointerDown={handleDrawPointerDown}
+                onPointerMove={handleDrawPointerMove}
+                onPointerUp={handleDrawPointerUp}
+                onPointerCancel={handleDrawPointerUp}
+              />
+              <span className={styles.helpText}>Tanda tangan langsung di area ini. Hasilnya otomatis dipakai setelah Anda selesai menggambar.</span>
+            </div>
             {signaturePreviewUrl ? (
               <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                 <div className="grid min-h-20 place-items-center rounded-md border border-dashed border-emerald-500/35 bg-white p-2">
@@ -408,4 +523,18 @@ function clamp(value: number, min: number, max: number) {
       </section>
     </main>
   );
+}
+
+function clampPlacement(placement: SignaturePlacement, aspectRatio: number): SignaturePlacement {
+  const height = placement.width / Math.max(0.1, aspectRatio);
+
+  return {
+    width: clamp(placement.width, 0.08, 0.62),
+    x: clamp(placement.x, 0, Math.max(0, 1 - placement.width)),
+    y: clamp(placement.y, 0, Math.max(0, 1 - height)),
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
