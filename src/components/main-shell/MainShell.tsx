@@ -67,7 +67,7 @@ export function MainShell({ children }: MainShellProps) {
       ].join(" ")}
     >
       {desktopSidebarOpen ? (
-        <aside className="hidden h-screen overflow-y-auto border-r border-slate-200 bg-white/90 p-3 lg:sticky lg:top-0 lg:block">
+        <aside className="hidden h-screen flex-col border-r border-slate-200 bg-white/90 p-3 lg:sticky lg:top-0 lg:flex">
           <SidebarContent
             pathname={pathname}
             searchQuery={toolSearch}
@@ -187,9 +187,9 @@ function SidebarContent({
   const totalMatches = toolCatalog.filter((tool) => toolMatchesSearch(tool, normalizedSearch)).length;
 
   return (
-    <>
-      <div className="sticky top-0 z-20 -mx-3 -mt-3 mb-5 border-b border-slate-200 bg-white/95 px-3 pb-3 pt-3 backdrop-blur">
-        <div className="mb-5 flex items-center justify-between gap-3">
+    <div className="flex h-full flex-col">
+      <div className="sticky top-0 z-20 -mx-3 -mt-3 mb-3 border-b border-slate-200 bg-white/95 px-3 pb-3 pt-3 backdrop-blur">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <Link className="flex min-w-0 items-center gap-3" href="/" onClick={onNavigate}>
             <div className="grid size-11 flex-none place-items-center rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-400 shadow-[0_14px_30px_rgb(16_185_129_/_22%)]">
               <FileText className="text-white" size={22} />
@@ -238,57 +238,61 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <nav className="grid gap-5" aria-label="PDF tools">
-        {!hasSearch ? (
-          <Link className={navClass(pathname === "/")} href="/" onClick={onNavigate}>
-            <FileText size={17} />
-            Home
-          </Link>
-        ) : null}
+      <div className="flex-1 overflow-y-auto">
+        <nav className="grid gap-5" aria-label="PDF tools">
+          {!hasSearch ? (
+            <Link className={navClass(pathname === "/")} href="/" onClick={onNavigate}>
+              <FileText size={17} />
+              Home
+            </Link>
+          ) : null}
 
-        {toolCategories.map((category) => {
-          const items = toolCatalog.filter((tool) => tool.category === category && toolMatchesSearch(tool, normalizedSearch));
-          if (items.length === 0) return null;
+          {toolCategories.map((category) => {
+            const items = toolCatalog.filter((tool) => tool.category === category && toolMatchesSearch(tool, normalizedSearch));
+            if (items.length === 0) return null;
 
-          return (
-            <div key={category}>
-              <div className="mb-2 px-3 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
-                {category}
+            return (
+              <div key={category}>
+                <div className="mb-2 px-3 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
+                  {category}
+                </div>
+                <div className="grid gap-1">
+                  {items.map((tool) => {
+                    const Icon = getIcon(tool);
+                    const href = `/${tool.slug}`;
+
+                    return (
+                      <Link key={tool.slug} className={navClass(pathname === href)} href={href} onClick={onNavigate}>
+                        <Icon size={17} />
+                        {tool.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid gap-1">
-                {items.map((tool) => {
-                  const Icon = getIcon(tool);
-                  const href = `/${tool.slug}`;
+            );
+          })}
 
-                  return (
-                    <Link key={tool.slug} className={navClass(pathname === href)} href={href} onClick={onNavigate}>
-                      <Icon size={17} />
-                      {tool.label}
-                    </Link>
-                  );
-                })}
-              </div>
+          {hasSearch && totalMatches === 0 ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-relaxed text-slate-500">
+              No tools match "{searchQuery.trim()}".
             </div>
-          );
-        })}
-
-        {hasSearch && totalMatches === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-relaxed text-slate-500">
-            No tools match "{searchQuery.trim()}".
-          </div>
-        ) : null}
-      </nav>
-
-      <div className="mt-8 rounded-xl border border-emerald-500/20 bg-emerald-100/55 p-4 text-emerald-800">
-        <div className="mb-1 flex items-center gap-2 text-sm font-extrabold">
-          <ShieldCheck size={17} />
-          Private by design
-        </div>
-        <p className="m-0 text-xs font-semibold leading-relaxed text-emerald-900/75">
-          Files are processed locally in your browser.
-        </p>
+          ) : null}
+        </nav>
       </div>
-    </>
+
+      <div className="mt-auto shrink-0 pt-4">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-100/55 p-4 text-emerald-800">
+          <div className="mb-1 flex items-center gap-2 text-sm font-extrabold">
+            <ShieldCheck size={17} />
+            Your file stay yours.
+          </div>
+          <p className="m-0 text-xs font-semibold leading-relaxed text-emerald-900/75">
+            Your files never leave your computer. That’s our promise. We don't see your files. We don't want to.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
