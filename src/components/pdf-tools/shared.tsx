@@ -72,10 +72,9 @@ export function usePdfToolController() {
 
     try {
       const processed = await producer();
-      const namedResult =
-        outputName.trim() && processed.mimeType !== "image/png" && processed.mimeType !== "image/jpeg"
-          ? { ...processed, fileName: ensurePdfName(outputName.trim()) }
-          : processed;
+      const namedResult = outputName.trim() && processed.mimeType !== "image/png" && processed.mimeType !== "image/jpeg"
+        ? { ...processed, fileName: processed.mimeType === "application/zip" ? ensureZipName(outputName.trim()) : ensurePdfName(outputName.trim()) }
+        : processed;
 
       setResult(namedResult);
       setStatus("success");
@@ -91,7 +90,7 @@ export function usePdfToolController() {
   }
 
   async function addResultToFiles() {
-    if (!result || result.mimeType?.startsWith("image/")) return;
+    if (!result || (result.mimeType !== undefined && result.mimeType !== "application/pdf")) return;
 
     const pageCount = await getPdfPageCount(result.bytes);
     const nextDocument: PdfDocumentState = {
@@ -322,6 +321,10 @@ export function requireActiveDocument(document: PdfDocumentState | null): PdfDoc
 
 export function ensurePdfName(name: string) {
   return name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`;
+}
+
+export function ensureZipName(name: string) {
+  return name.toLowerCase().endsWith(".zip") ? name : `${name}.zip`;
 }
 
 export function getErrorMessage(error: unknown, fallback: string) {

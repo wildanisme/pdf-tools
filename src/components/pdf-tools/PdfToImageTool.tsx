@@ -1,8 +1,8 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Download, FileText, FileImage, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
-import { renderPdfPageToImage } from "@/lib/pdf/renderPdfToImage";
+import { renderPdfPagePreviewUrls, renderPdfPagesToImages } from "@/lib/pdf/renderPdfToImage";
 import { NumberField, SelectField, TextField, requireActiveDocument } from "./shared";
 import { downloadResult, formatBytes, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
@@ -10,12 +10,70 @@ import styles from "./PdfTool.module.css";
 export function PdfToImageTool() {
   const tool = usePdfToolController();
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [previewPage, setPreviewPage] = useState(1);
-  const [pdfImagePage, setPdfImagePage] = useState(1);
+  const [selectedPageIndexes, setSelectedPageIndexes] = useState<number[]>([]);
+  const [pagePreviewUrls, setPagePreviewUrls] = useState<string[]>([]);
+  const [pagePreviewStatus, setPagePreviewStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [pagePreviewError, setPagePreviewError] = useState<string | null>(null);
   const [pdfImageScale, setPdfImageScale] = useState(1.5);
   const [pdfImageFormat, setPdfImageFormat] = useState<"image/png" | "image/jpeg">("image/png");
 
-  const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length > 0;
+  const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length > 0 && selectedPageIndexes.length > 0;
+
+  useEffect(() => {
+    const document = tool.activeDocument;
+    setSelectedPageIndexes(document ? Array.from({ length: document.pageCount }, (_, index) => index) : []);
+  }, [tool.activeDocument]);
+
+  useEffect(() => {
+    const document = tool.activeDocument;
+    let cancelled = false;
+    let urlsFromEffect: string[] = [];
+
+    setPagePreviewUrls([]);
+    setPagePreviewError(null);
+
+    if (!document) {
+      setPagePreviewStatus("idle");
+      return;
+    }
+
+    setPagePreviewStatus("loading");
+
+    renderPdfPagePreviewUrls(document.bytes, { pageCount: document.pageCount, scale: 0.22 })
+      .then((urls) => {
+        if (cancelled) {
+          urls.forEach((url) => URL.revokeObjectURL(url));
+          return;
+        }
+
+        urlsFromEffect = urls;
+        setPagePreviewUrls(urls);
+        setPagePreviewStatus("idle");
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled) return;
+        setPagePreviewError(caughtError instanceof Error ? caughtError.message : "Gagal membuat preview halaman.");
+        setPagePreviewStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+      urlsFromEffect.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [tool.activeDocument]);
+
+  function togglePageSelection(pageIndex: number) {
+    setSelectedPageIndexes((current) => current.includes(pageIndex) ? current.filter((selectedPage) => selectedPage !== pageIndex) : [...current, pageIndex].sort((first, second) => first - second));
+  }
+
+  function selectAllPages() {
+    if (!tool.activeDocument) return;
+    setSelectedPageIndexes(Array.from({ length: tool.activeDocument.pageCount }, (_, index) => index));
+  }
+
+  function clearSelectedPages() {
+    setSelectedPageIndexes([]);
+  }
 
   function handlePdfInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) void tool.handlePdfFiles(event.target.files);
@@ -112,25 +170,69 @@ export function PdfToImageTool() {
                   <span>Selected PDF</span>
                   <strong>{tool.activeDocument.name}</strong>
                 </div>
-                <small>{tool.activeDocument.pageCount} halaman</small>
+                <small>{selectedPageIndexes.length} dari {tool.activeDocument.pageCount} halaman dipilih</small>
               </div>
-              <div className={styles.pageStrip} aria-label="Page thumbnails">
-                {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={index + 1 === previewPage ? styles.pageChipActive : styles.pageChip}
-                    onClick={() => {
-                      setPreviewPage(index + 1);
-                      setPdfImagePage(index + 1);
-                    }}
-                  >
-                    {index + 1}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3.5 py-2.5">
+                <p className="m-0 text-xs font-semibold text-slate-600">Centang halaman yang ingin diexport menjadi gambar.</p>
+                <div className="flex items-center gap-2">
+                  <button className="min-h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-extrabold text-slate-700 hover:border-emerald-500/35 hover:bg-emerald-50" type="button" onClick={selectAllPages}>
+                    Pilih semua
                   </button>
-                ))}
+                  <button className="min-h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-extrabold text-slate-700 hover:border-emerald-500/35 hover:bg-emerald-50" type="button" onClick={clearSelectedPages}>
+                    Bersihkan
+                  </button>
+                </div>
               </div>
-              <div className={styles.previewSurfaceCompact}>
-                <iframe className={styles.pdfFrameCompact} src={tool.activeDocumentUrl ?? undefined} title={`Preview ${tool.activeDocument.name}`} />
+              <div className="min-h-[360px] bg-slate-50 p-3.5">
+                {pagePreviewStatus === "loading" ? (
+                  <div className={styles.previewEmpty}>
+                    <Loader2 className={styles.spin} size={22} />
+                    <p>Membuat preview halaman...</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "error" ? (
+                  <div className={styles.previewEmpty}>
+                    <FileImage size={22} />
+                    <p>{pagePreviewError}</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "idle" ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="PDF pages">
+                    {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => {
+                      const checked = selectedPageIndexes.includes(index);
+                      const previewUrl = pagePreviewUrls[index];
+
+                      return (
+                        <label
+                          key={index}
+                          className={[
+                            "grid cursor-pointer gap-2 rounded-lg border bg-white p-2.5 shadow-[0_8px_24px_rgb(15_23_42_/_8%)] transition",
+                            checked ? "border-emerald-500 ring-2 ring-emerald-500/15" : "border-slate-200 hover:border-emerald-500/40",
+                          ].join(" ")}
+                          role="listitem"
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-extrabold text-slate-800">Page {index + 1}</span>
+                            <input
+                              className="size-4 accent-emerald-600"
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => togglePageSelection(index)}
+                              aria-label={`Export page ${index + 1}`}
+                            />
+                          </span>
+                          <span
+                            className="block aspect-[3/4] rounded-md border border-slate-200 bg-white bg-contain bg-center bg-no-repeat"
+                            style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+                            aria-hidden="true"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -142,8 +244,10 @@ export function PdfToImageTool() {
             <FileImage size={16} />
           </div>
           <div className={styles.optionStack}>
-            <TextField label="Output name" value={tool.outputName} onChange={tool.setOutputName} placeholder="custom-result.pdf" />
-            <NumberField label="Page" value={pdfImagePage} onChange={setPdfImagePage} min={1} max={Math.max(1, tool.activeDocument?.pageCount ?? 1)} />
+            <TextField label="Output name" value={tool.outputName} onChange={tool.setOutputName} placeholder="pdf-pages-images.zip" />
+            <span className={styles.helpText}>
+              {selectedPageIndexes.length} halaman akan diexport. Jika hanya satu halaman dipilih, output berupa gambar. Jika lebih dari satu, output berupa ZIP.
+            </span>
             <NumberField label="Scale" value={pdfImageScale} onChange={setPdfImageScale} min={0.5} max={4} step={0.25} />
             <SelectField label="Format" value={pdfImageFormat} onChange={(value) => setPdfImageFormat(value as "image/png" | "image/jpeg")} options={[["image/png", "PNG"], ["image/jpeg", "JPEG"]]} />
           </div>
@@ -154,14 +258,14 @@ export function PdfToImageTool() {
             <div className={styles.successBox}>
               <strong>{tool.result.fileName} siap</strong>
               <span>
-                {tool.result.mimeType?.startsWith("image/") ? "1 gambar" : `${tool.result.pageCount} halaman`}
+                {tool.result.mimeType?.startsWith("image/") ? "1 gambar" : tool.result.mimeType === "application/zip" ? `${tool.result.pageCount} gambar` : `${tool.result.pageCount} halaman`}
                 {tool.result.sizeBefore && tool.result.sizeAfter ? ` · ${formatBytes(tool.result.sizeBefore)} → ${formatBytes(tool.result.sizeAfter)}` : ""}
               </span>
             </div>
           ) : null}
 
           <div className={styles.actionButtons}>
-            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(() => { const document = requireActiveDocument(tool.activeDocument); return renderPdfPageToImage(document.bytes, { pageIndex: Math.max(0, Math.min(document.pageCount - 1, pdfImagePage - 1)), format: pdfImageFormat, scale: pdfImageScale }); })} disabled={!(canProcess)}>
+            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(() => { const document = requireActiveDocument(tool.activeDocument); return renderPdfPagesToImages(document.bytes, { pageIndexes: selectedPageIndexes, format: pdfImageFormat, scale: pdfImageScale }); })} disabled={!(canProcess)}>
               {tool.status === "processing" || tool.status === "loading" ? <Loader2 className={styles.spin} size={18} /> : null}
               Proses
             </button>
@@ -169,7 +273,7 @@ export function PdfToImageTool() {
               <Download size={18} />
               Download
             </button>
-            <button className={styles.secondaryButton} type="button" disabled={!tool.result || tool.result.mimeType?.startsWith("image/")} onClick={() => void tool.addResultToFiles()}>
+            <button className={styles.secondaryButton} type="button" disabled={!tool.result || (tool.result.mimeType !== undefined && tool.result.mimeType !== "application/pdf")} onClick={() => void tool.addResultToFiles()}>
               Tambah ke Files
             </button>
           </div>

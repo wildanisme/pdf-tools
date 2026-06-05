@@ -119,18 +119,6 @@
   @apply grid gap-2;
 }
 
-.imageListLarge {
-  @apply grid gap-2;
-}
-
-.imageItem {
-  @apply grid min-h-14 grid-cols-[20px_minmax(0,1fr)] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800;
-}
-
-.imageItem span {
-  @apply overflow-hidden text-ellipsis whitespace-nowrap;
-}
-
 .emptyState,
 .previewEmpty {
   @apply grid min-h-36 place-items-center rounded-lg border border-slate-200 bg-slate-50 p-4 text-center;
@@ -486,4 +474,5 @@
     min-height: 360px;
     height: 360px;
   }
+
 }

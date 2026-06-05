@@ -1,15 +1,22 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
-import { Download, FileImage, FilePlus2, Loader2, ShieldCheck, Upload } from "lucide-react";
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Download, FileImage, FilePlus2, GripVertical, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { toArrayBuffer } from "@/lib/bytes";
 import { imagesToPdf, type ImageInput, type PageSizePreset } from "@/lib/pdf/operations/advanced";
 import { downloadResult, formatBytes, getErrorMessage, NumberField, readImageInputs, SelectField, TextField, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
 
+type ImageQueueItem = ImageInput & {
+  id: string;
+};
+
 export function ImageToPdfTool() {
   const tool = usePdfToolController();
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const [images, setImages] = useState<ImageInput[]>([]);
+  const [images, setImages] = useState<ImageQueueItem[]>([]);
+  const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
+  const [dragOverImageId, setDragOverImageId] = useState<string | null>(null);
   const [imagePageSize, setImagePageSize] = useState<PageSizePreset>("a4");
   const [imageMargin, setImageMargin] = useState(24);
   const canProcess = tool.status !== "loading" && tool.status !== "processing" && images.length > 0;
@@ -18,7 +25,7 @@ export function ImageToPdfTool() {
     try {
       tool.setError(null);
       const nextImages = await readImageInputs(files);
-      setImages((current) => [...current, ...nextImages]);
+      setImages((current) => [...current, ...nextImages.map((image) => ({ ...image, id: crypto.randomUUID() }))]);
     } catch (caughtError) {
       tool.setError(getErrorMessage(caughtError, "Gagal membaca gambar."));
     }
@@ -27,6 +34,63 @@ export function ImageToPdfTool() {
   function handleImageInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) void handleImageFiles(event.target.files);
     event.target.value = "";
+  }
+
+  function moveImage(imageId: string, direction: -1 | 1) {
+    setImages((current) => {
+      const index = current.findIndex((image) => image.id === imageId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(nextIndex, 0, item);
+      return next;
+    });
+  }
+
+  function reorderImage(draggedId: string, targetId: string) {
+    if (draggedId === targetId) return;
+
+    setImages((current) => {
+      const draggedIndex = current.findIndex((image) => image.id === draggedId);
+      const targetIndex = current.findIndex((image) => image.id === targetId);
+      if (draggedIndex < 0 || targetIndex < 0) return current;
+
+      const next = [...current];
+      const [draggedItem] = next.splice(draggedIndex, 1);
+      next.splice(targetIndex, 0, draggedItem);
+      return next;
+    });
+  }
+
+  function handleImageDragStart(event: DragEvent<HTMLElement>, imageId: string) {
+    setDraggedImageId(imageId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", imageId);
+  }
+
+  function handleImageDragOver(event: DragEvent<HTMLElement>, imageId: string) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverImageId(imageId);
+  }
+
+  function handleImageDrop(event: DragEvent<HTMLElement>, targetId: string) {
+    event.preventDefault();
+    const draggedId = draggedImageId ?? event.dataTransfer.getData("text/plain");
+    if (draggedId) reorderImage(draggedId, targetId);
+    setDraggedImageId(null);
+    setDragOverImageId(null);
+  }
+
+  function handleImageDragEnd() {
+    setDraggedImageId(null);
+    setDragOverImageId(null);
+  }
+
+  function removeImage(imageId: string) {
+    setImages((current) => current.filter((image) => image.id !== imageId));
   }
 
   return (
@@ -58,8 +122,63 @@ export function ImageToPdfTool() {
               <input ref={imageInputRef} className={styles.hiddenInput} type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleImageInputChange} />
             </div>
             <div className={styles.fileListHeader}><span>Images</span><span>{images.length} file</span></div>
-            <div className={styles.imageListLarge}>
-              {images.length === 0 ? <div className={styles.emptyState}><FileImage size={22} /><p>Belum ada gambar. Tambahkan gambar untuk membuat PDF.</p></div> : images.map((image, index) => <div key={`${image.name}-${index}`} className={styles.imageItem}><FileImage size={18} /><span>{image.name ?? `Image ${index + 1}`}</span></div>)}
+            <div className={["grid gap-2", images.length > 5 ? "max-h-[480px] overflow-y-auto pr-1" : ""].join(" ")} role="list">
+              {images.length === 0 ? (
+                <div className={styles.emptyState}><FileImage size={22} /><p>Belum ada gambar. Tambahkan gambar untuk membuat PDF.</p></div>
+              ) : (
+                images.map((image, index) => (
+                  <article
+                    key={image.id}
+                    className={[
+                      "grid min-h-20 cursor-grab grid-cols-[auto_56px_minmax(0,1fr)] items-center gap-3 rounded-lg border border-slate-200 bg-white p-2.5 text-sm font-bold text-slate-800 transition active:cursor-grabbing sm:grid-cols-[auto_64px_minmax(0,1fr)_auto]",
+                      draggedImageId === image.id ? "opacity-55" : "",
+                      dragOverImageId === image.id && draggedImageId !== image.id ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20" : "",
+                    ].join(" ")}
+                    role="listitem"
+                    draggable
+                    onDragStart={(event) => handleImageDragStart(event, image.id)}
+                    onDragOver={(event) => handleImageDragOver(event, image.id)}
+                    onDragLeave={() => setDragOverImageId((current) => current === image.id ? null : current)}
+                    onDrop={(event) => handleImageDrop(event, image.id)}
+                    onDragEnd={handleImageDragEnd}
+                  >
+                    <GripVertical className="text-slate-400" size={18} aria-hidden="true" />
+                    <ImagePreview image={image} />
+                    <span>
+                      <strong className="block overflow-hidden text-ellipsis whitespace-nowrap">{image.name ?? `Image ${index + 1}`}</strong>
+                      <small className="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-slate-500">Position {index + 1}</small>
+                    </span>
+                    <div className="col-span-full flex items-center justify-end gap-1 sm:col-auto">
+                      <button
+                        className="grid size-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                        type="button"
+                        aria-label={`Move ${image.name ?? `image ${index + 1}`} up`}
+                        disabled={index === 0}
+                        onClick={() => moveImage(image.id, -1)}
+                      >
+                        <ArrowUp size={15} />
+                      </button>
+                      <button
+                        className="grid size-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                        type="button"
+                        aria-label={`Move ${image.name ?? `image ${index + 1}`} down`}
+                        disabled={index === images.length - 1}
+                        onClick={() => moveImage(image.id, 1)}
+                      >
+                        <ArrowDown size={15} />
+                      </button>
+                      <button
+                        className="grid size-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                        type="button"
+                        aria-label={`Remove ${image.name ?? `image ${index + 1}`}`}
+                        onClick={() => removeImage(image.id)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
             </div>
           </section>
         </div>
@@ -102,4 +221,24 @@ export function ImageToPdfTool() {
       </section>
     </main>
   );
+}
+
+function ImagePreview({ image }: { image: ImageInput }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(new Blob([toArrayBuffer(image.bytes)], { type: image.type }));
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [image]);
+
+  if (!url) {
+    return (
+      <span className="grid size-14 place-items-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 sm:size-16" aria-hidden="true">
+        <FileImage size={20} />
+      </span>
+    );
+  }
+
+  return <span className="block size-14 rounded-lg border border-slate-200 bg-slate-100 bg-cover bg-center sm:size-16" style={{ backgroundImage: `url(${url})` }} aria-hidden="true" />;
 }
