@@ -98,6 +98,28 @@ export async function rotatePdfPages(
   return savePdf(pdf, "rotated-pages.pdf");
 }
 
+export async function rotatePdfPagesByDegrees(
+  bytes: Uint8Array,
+  rotations: Array<{ pageIndex: number; rotation: 0 | 90 | 180 | 270 }>,
+): Promise<PdfProcessingResult> {
+  const pdf = await PDFDocument.load(bytes);
+  const activeRotations = rotations.filter((item) => item.rotation !== 0);
+
+  if (activeRotations.length === 0) {
+    throw new Error("Pilih minimal satu halaman untuk diputar.");
+  }
+
+  validatePageIndexes(activeRotations.map((item) => item.pageIndex), pdf.getPageCount());
+
+  for (const item of activeRotations) {
+    const page = pdf.getPage(item.pageIndex);
+    const currentAngle = page.getRotation().angle;
+    page.setRotation(degrees((currentAngle + item.rotation) % 360));
+  }
+
+  return savePdf(pdf, "rotated-pages.pdf");
+}
+
 export async function compressPdf(bytes: Uint8Array): Promise<PdfProcessingResult> {
   const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
   pdf.setProducer("Privacy PDF Tools");

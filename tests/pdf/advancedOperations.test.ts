@@ -14,6 +14,7 @@ import {
   reorderPdfPages,
   resizePdfPages,
   rotatePdfPages,
+  rotatePdfPagesByDegrees,
   sortPdfPages,
 } from "@/lib/pdf/operations/advanced";
 
@@ -69,6 +70,19 @@ describe("advanced PDF operations", () => {
 
     expect(pdf.getPage(0).getRotation().angle).toBe(90);
     expect(pdf.getPage(1).getRotation().angle).toBe(0);
+  });
+
+  it("rotates pages with independent per-page degrees", async () => {
+    const result = await rotatePdfPagesByDegrees(await createPdf(3), [
+      { pageIndex: 0, rotation: 90 },
+      { pageIndex: 1, rotation: 180 },
+      { pageIndex: 2, rotation: 0 },
+    ]);
+    const pdf = await PDFDocument.load(result.bytes);
+
+    expect(pdf.getPage(0).getRotation().angle).toBe(90);
+    expect(pdf.getPage(1).getRotation().angle).toBe(180);
+    expect(pdf.getPage(2).getRotation().angle).toBe(0);
   });
 
   it("adds watermark and page numbers without changing page count", async () => {
