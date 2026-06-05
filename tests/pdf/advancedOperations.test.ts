@@ -107,10 +107,12 @@ describe("advanced PDF operations", () => {
       author: "Privacy PDF Tools",
       keywords: "local,privacy",
     });
-    const pdf = await PDFDocument.load(result.bytes);
+    const pdf = await PDFDocument.load(result.bytes, { updateMetadata: false });
 
     expect(pdf.getTitle()).toBe("Local PDF");
     expect(pdf.getAuthor()).toBe("Privacy PDF Tools");
+    expect(pdf.getCreator()).toBe("Privacy PDF Tools");
+    expect(pdf.getProducer()).toBe("Privacy PDF Tools");
     expect(pdf.getKeywords()).toContain("privacy");
   });
 

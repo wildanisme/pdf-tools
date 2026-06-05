@@ -1,7 +1,7 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Download, FileImage, FileText, Files, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Download, FileImage, FileText, Files, GripVertical, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { toArrayBuffer } from "@/lib/bytes";
 import { mergePdfDocuments } from "@/lib/pdf/operations/merge";
 import { renderPdfPageToImage } from "@/lib/pdf/renderPdfToImage";
@@ -12,12 +12,55 @@ import styles from "./PdfTool.module.css";
 export function MergePdfTool() {
   const tool = usePdfToolController();
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const [draggingDocumentId, setDraggingDocumentId] = useState<string | null>(null);
+  const [dragOverDocumentId, setDragOverDocumentId] = useState<string | null>(null);
 
   const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length >= 2;
 
   function handlePdfInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) void tool.handlePdfFiles(event.target.files);
     event.target.value = "";
+  }
+
+  function handleDragStart(event: DragEvent<HTMLElement>, documentId: string) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", documentId);
+    setDraggingDocumentId(documentId);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLElement>, documentId: string) {
+    if (!draggingDocumentId || draggingDocumentId === documentId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverDocumentId(documentId);
+  }
+
+  function handleDrop(event: DragEvent<HTMLElement>, targetDocumentId: string) {
+    event.preventDefault();
+    const draggedDocumentId = event.dataTransfer.getData("text/plain") || draggingDocumentId;
+
+    if (!draggedDocumentId || draggedDocumentId === targetDocumentId) {
+      resetDragState();
+      return;
+    }
+
+    tool.setDocuments((current) => {
+      const sourceIndex = current.findIndex((document) => document.id === draggedDocumentId);
+      const targetIndex = current.findIndex((document) => document.id === targetDocumentId);
+
+      if (sourceIndex === -1 || targetIndex === -1) return current;
+
+      const next = [...current];
+      const [draggedDocument] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, draggedDocument);
+      return next;
+    });
+    resetDragState();
+  }
+
+  function resetDragState() {
+    setDraggingDocumentId(null);
+    setDragOverDocumentId(null);
   }
 
   return (
@@ -73,7 +116,7 @@ export function MergePdfTool() {
 
               <div className={styles.fileListHeader}>
                 <span>Merge queue</span>
-                <span>{tool.documents.length} PDF</span>
+                <span>{tool.documents.length} PDF · drag untuk urutkan</span>
               </div>
 
               <div className="grid gap-2">
@@ -86,8 +129,27 @@ export function MergePdfTool() {
                   tool.documents.map((document, index) => (
                     <article
                       key={document.id}
-                      className="grid min-h-20 grid-cols-[56px_1fr] items-center gap-3 rounded-lg border border-slate-200 bg-white p-2.5 text-sm font-bold text-slate-800 transition sm:grid-cols-[64px_1fr_auto]"
+                      className={[
+                        "group grid min-h-20 cursor-grab grid-cols-[44px_56px_1fr] items-center gap-3 rounded-lg border bg-white p-2.5 text-sm font-bold text-slate-800 transition active:cursor-grabbing sm:grid-cols-[78px_64px_1fr_auto]",
+                        draggingDocumentId === document.id ? "border-emerald-500/55 opacity-60" : "border-slate-200",
+                        dragOverDocumentId === document.id ? "ring-2 ring-emerald-500/25" : "",
+                      ].join(" ")}
+                      draggable={tool.documents.length > 1}
+                      onDragStart={(event) => handleDragStart(event, document.id)}
+                      onDragEnter={() => {
+                        if (draggingDocumentId && draggingDocumentId !== document.id) setDragOverDocumentId(document.id);
+                      }}
+                      onDragOver={(event) => handleDragOver(event, document.id)}
+                      onDrop={(event) => handleDrop(event, document.id)}
+                      onDragEnd={resetDragState}
                     >
+                      <span className="flex cursor-grab items-center gap-1 rounded-md border border-transparent px-1.5 py-1 text-slate-400 transition group-hover:border-emerald-500/25 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-focus-within:border-emerald-500/25 group-focus-within:bg-emerald-50 group-focus-within:text-emerald-700 active:cursor-grabbing" aria-hidden="true">
+                        <GripVertical className="shrink-0" size={17} />
+                        <span className="hidden text-[11px] font-extrabold text-emerald-700 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 sm:inline">
+                          Drag
+                        </span>
+                        <span className="sr-only">Drag</span>
+                      </span>
                       <PdfThumbnail bytes={document.bytes} />
                       <div>
                         <strong className="block overflow-hidden text-ellipsis whitespace-nowrap">{document.name}</strong>

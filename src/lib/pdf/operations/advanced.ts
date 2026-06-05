@@ -316,13 +316,17 @@ export async function addSignatureImage(
 }
 
 export async function editPdfMetadata(bytes: Uint8Array, metadata: MetadataInput): Promise<PdfProcessingResult> {
-  const pdf = await PDFDocument.load(bytes);
+  const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
 
   if (metadata.title) pdf.setTitle(metadata.title, { showInWindowTitleBar: true });
-  if (metadata.author) pdf.setAuthor(metadata.author);
+  if (metadata.author) {
+    pdf.setAuthor(metadata.author);
+    pdf.setCreator(metadata.author);
+  }
   if (metadata.subject) pdf.setSubject(metadata.subject);
   if (metadata.keywords) pdf.setKeywords(metadata.keywords.split(",").map((keyword) => keyword.trim()).filter(Boolean));
 
+  pdf.setProducer("Privacy PDF Tools");
   pdf.setModificationDate(new Date());
   return savePdf(pdf, "metadata.pdf");
 }

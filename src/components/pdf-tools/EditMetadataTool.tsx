@@ -1,26 +1,94 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Download, FileText, Type, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Download, FileImage, FileText, Type, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { toArrayBuffer } from "@/lib/bytes";
 import { editPdfMetadata } from "@/lib/pdf/operations/advanced";
-import { TextField, requireActiveDocument } from "./shared";
-import { downloadResult, formatBytes, usePdfToolController } from "./shared";
+import { renderPdfPageToImage } from "@/lib/pdf/renderPdfToImage";
+import { createStoreZip } from "@/lib/zip/storeZip";
+import { TextField } from "./shared";
+import { downloadResult, ensurePdfName, formatBytes, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
 
 export function EditMetadataTool() {
   const tool = usePdfToolController();
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [previewPage, setPreviewPage] = useState(1);
   const [metadataTitle, setMetadataTitle] = useState("");
   const [metadataAuthor, setMetadataAuthor] = useState("");
   const [metadataSubject, setMetadataSubject] = useState("");
   const [metadataKeywords, setMetadataKeywords] = useState("");
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
 
-  const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length > 0;
+  const selectedDocuments = useMemo(
+    () => tool.documents.filter((document) => selectedDocumentIds.includes(document.id)),
+    [selectedDocumentIds, tool.documents],
+  );
+  const canProcess = tool.status !== "loading" && tool.status !== "processing" && selectedDocuments.length > 0;
+
+  useEffect(() => {
+    setSelectedDocumentIds((current) => {
+      const existingIds = new Set(tool.documents.map((document) => document.id));
+      const nextIds = current.filter((documentId) => existingIds.has(documentId));
+      const currentIds = new Set(nextIds);
+
+      for (const document of tool.documents) {
+        if (!currentIds.has(document.id)) nextIds.push(document.id);
+      }
+
+      return nextIds;
+    });
+  }, [tool.documents]);
 
   function handlePdfInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) void tool.handlePdfFiles(event.target.files);
     event.target.value = "";
+  }
+
+  function toggleSelectedDocument(documentId: string) {
+    setSelectedDocumentIds((current) => (
+      current.includes(documentId)
+        ? current.filter((selectedId) => selectedId !== documentId)
+        : [...current, documentId]
+    ));
+  }
+
+  async function processSelectedDocuments() {
+    if (selectedDocuments.length === 0) {
+      throw new Error("Pilih minimal satu file PDF.");
+    }
+
+    const metadata = {
+      title: metadataTitle,
+      author: metadataAuthor,
+      subject: metadataSubject,
+      keywords: metadataKeywords,
+    };
+
+    if (selectedDocuments.length === 1) {
+      return editPdfMetadata(selectedDocuments[0].bytes, metadata);
+    }
+
+    const processedFiles = await Promise.all(
+      selectedDocuments.map(async (document) => {
+        const result = await editPdfMetadata(document.bytes, metadata);
+        return {
+          name: ensurePdfName(document.name.replace(/\.pdf$/i, "-metadata.pdf")),
+          bytes: result.bytes,
+        };
+      }),
+    );
+
+    const sizeBefore = selectedDocuments.reduce((total, document) => total + document.size, 0);
+    const zipBytes = createStoreZip(processedFiles);
+
+    return {
+      fileName: "metadata-pdfs.zip",
+      bytes: zipBytes,
+      pageCount: selectedDocuments.length,
+      mimeType: "application/zip",
+      sizeBefore,
+      sizeAfter: zipBytes.byteLength,
+    };
   }
 
   return (
@@ -75,11 +143,22 @@ export function EditMetadataTool() {
               </div>
 
               <div className={styles.fileListHeader}>
-                <span>Files</span>
-                <span>{tool.documents.length} PDF</span>
+                <span>Metadata batch</span>
+                <span>{selectedDocuments.length}/{tool.documents.length} dipilih</span>
               </div>
 
-              <div className={styles.fileList}>
+              {tool.documents.length > 0 ? (
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <button className={styles.secondaryButton} type="button" onClick={() => setSelectedDocumentIds(tool.documents.map((document) => document.id))}>
+                    Pilih semua
+                  </button>
+                  <button className={styles.secondaryButton} type="button" onClick={() => setSelectedDocumentIds([])} disabled={selectedDocuments.length === 0}>
+                    Kosongkan
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="grid gap-2">
                 {tool.documents.length === 0 ? (
                   <div className={styles.emptyState}>
                     <FileText size={22} />
@@ -87,54 +166,50 @@ export function EditMetadataTool() {
                   </div>
                 ) : (
                   tool.documents.map((document, index) => (
-                    <article key={document.id} className={document.id === tool.activeDocument?.id ? styles.fileItemActive : styles.fileItem}>
-                      <button className={styles.fileMainButton} type="button" onClick={() => tool.setActiveDocumentId(document.id)} aria-label={`Pilih ${document.name}`}>
-                        <FileText size={18} />
-                        <span>
-                          <strong>{document.name}</strong>
-                          <small>{document.pageCount} halaman · {formatBytes(document.size)}</small>
-                        </span>
+                    <article
+                      key={document.id}
+                      className={[
+                        "grid min-h-20 grid-cols-[56px_1fr] items-center gap-3 rounded-lg border bg-white p-2.5 text-sm font-bold text-slate-800 transition sm:grid-cols-[64px_1fr_auto]",
+                        selectedDocumentIds.includes(document.id) ? "border-emerald-500/45 bg-emerald-50" : "border-slate-200",
+                      ].join(" ")}
+                    >
+                      <MetadataThumbnail bytes={document.bytes} />
+                      <button
+                        className="min-w-0 text-left"
+                        type="button"
+                        onClick={() => toggleSelectedDocument(document.id)}
+                        aria-label={`Pilih ${document.name} untuk batch metadata`}
+                      >
+                        <strong className="block overflow-hidden text-ellipsis whitespace-nowrap">{document.name}</strong>
+                        <small className="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-slate-500">
+                          File {index + 1} · {document.pageCount} halaman · {formatBytes(document.size)}
+                        </small>
                       </button>
-                      <div className={styles.fileActions}>
-                        <button type="button" aria-label="Pindah file ke atas" disabled={index === 0} onClick={() => tool.moveDocument(document.id, -1)}><ArrowUp size={15} /></button>
-                        <button type="button" aria-label="Pindah file ke bawah" disabled={index === tool.documents.length - 1} onClick={() => tool.moveDocument(document.id, 1)}><ArrowDown size={15} /></button>
-                        <button type="button" aria-label="Hapus file" onClick={() => tool.removeDocument(document.id)}><Trash2 size={15} /></button>
+                      <div className="col-span-full flex items-center justify-end gap-2 sm:col-auto">
+                        <label className="flex min-h-8 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-extrabold text-slate-700">
+                          <input
+                            className="h-4 w-4 accent-emerald-600"
+                            type="checkbox"
+                            aria-label={`Pilih ${document.name} untuk batch metadata`}
+                            checked={selectedDocumentIds.includes(document.id)}
+                            onChange={() => toggleSelectedDocument(document.id)}
+                          />
+                          {selectedDocumentIds.includes(document.id) ? "Dipilih" : "Pilih"}
+                        </label>
+                        <button
+                          className="grid size-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                          type="button"
+                          aria-label={`Hapus ${document.name}`}
+                          onClick={() => tool.removeDocument(document.id)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </article>
                   ))
-                )}
-              </div>
+              )}
+            </div>
           </section>
-
-          {tool.activeDocument ? (
-            <section className={styles.previewPanel} aria-label="PDF preview">
-              <div className={styles.previewToolbar}>
-                <div>
-                  <span>Selected PDF</span>
-                  <strong>{tool.activeDocument.name}</strong>
-                </div>
-                <small>{tool.activeDocument.pageCount} halaman</small>
-              </div>
-              <div className={styles.pageStrip} aria-label="Page thumbnails">
-                {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={index + 1 === previewPage ? styles.pageChipActive : styles.pageChip}
-                    onClick={() => {
-                      setPreviewPage(index + 1);
-                      
-                    }}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.previewSurfaceCompact}>
-                <iframe className={styles.pdfFrameCompact} src={tool.activeDocumentUrl ?? undefined} title={`Preview ${tool.activeDocument.name}`} />
-              </div>
-            </section>
-          ) : null}
         </div>
 
         <aside className={styles.actionPanel} aria-label="Tool options">
@@ -148,6 +223,13 @@ export function EditMetadataTool() {
             <TextField label="Author" value={metadataAuthor} onChange={setMetadataAuthor} />
             <TextField label="Subject" value={metadataSubject} onChange={setMetadataSubject} />
             <TextField label="Keywords" value={metadataKeywords} onChange={setMetadataKeywords} placeholder="privacy,pdf,local" />
+            <span className={styles.helpText}>
+              {selectedDocuments.length > 1
+                ? `${selectedDocuments.length} file akan diproses dan diunduh sebagai ZIP.`
+                : selectedDocuments.length === 1
+                  ? "1 file akan diproses sebagai PDF."
+                  : "Pilih minimal satu file PDF."}
+            </span>
           </div>
 
           {tool.error ? <div className={styles.errorBox}>{tool.error}</div> : null}
@@ -156,14 +238,14 @@ export function EditMetadataTool() {
             <div className={styles.successBox}>
               <strong>{tool.result.fileName} siap</strong>
               <span>
-                {tool.result.mimeType?.startsWith("image/") ? "1 gambar" : `${tool.result.pageCount} halaman`}
+                {tool.result.mimeType === "application/zip" ? `${tool.result.pageCount} file` : tool.result.mimeType?.startsWith("image/") ? "1 gambar" : `${tool.result.pageCount} halaman`}
                 {tool.result.sizeBefore && tool.result.sizeAfter ? ` · ${formatBytes(tool.result.sizeBefore)} → ${formatBytes(tool.result.sizeAfter)}` : ""}
               </span>
             </div>
           ) : null}
 
           <div className={styles.actionButtons}>
-            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(() => editPdfMetadata(requireActiveDocument(tool.activeDocument).bytes, { title: metadataTitle, author: metadataAuthor, subject: metadataSubject, keywords: metadataKeywords }))} disabled={!(canProcess)}>
+            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(processSelectedDocuments)} disabled={!(canProcess)}>
               {tool.status === "processing" || tool.status === "loading" ? <Loader2 className={styles.spin} size={18} /> : null}
               Proses
             </button>
@@ -178,5 +260,49 @@ export function EditMetadataTool() {
         </aside>
       </section>
     </main>
+  );
+}
+
+function MetadataThumbnail({ bytes }: { bytes: Uint8Array }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setError(false);
+    setUrl(null);
+
+    renderPdfPageToImage(bytes, { pageIndex: 0, format: "image/png", scale: 0.3 })
+      .then((result) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(new Blob([toArrayBuffer(result.bytes)], { type: "image/png" }));
+        setUrl(objectUrl);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError(true);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [bytes]);
+
+  if (error || !url) {
+    return (
+      <span className="grid size-14 shrink-0 place-items-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 sm:size-16" aria-hidden="true">
+        <FileImage size={20} />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="block size-14 shrink-0 rounded-lg border border-slate-200 bg-slate-100 bg-cover bg-center sm:size-16"
+      style={{ backgroundImage: `url(${url})` }}
+      aria-hidden="true"
+    />
   );
 }
