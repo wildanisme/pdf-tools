@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, PointerEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, MouseEvent, PointerEvent, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Download, FileText, FileSignature, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { toArrayBuffer } from "@/lib/bytes";
 import { addSignatureImage, type ImageInput } from "@/lib/pdf/operations/advanced";
@@ -171,38 +171,70 @@ export function SignPdfTool() {
     };
   }
 
-  function handleDrawPointerDown(event: PointerEvent<HTMLCanvasElement>) {
-    const context = event.currentTarget.getContext("2d");
+  function getCanvasMousePoint(event: MouseEvent<HTMLCanvasElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  function startSignatureStroke(canvas: HTMLCanvasElement, point: { x: number; y: number }) {
+    const context = canvas.getContext("2d");
     if (!context) return;
 
-    const point = getCanvasPoint(event);
     isDrawingSignatureRef.current = true;
-    event.currentTarget.setPointerCapture(event.pointerId);
     context.beginPath();
     context.moveTo(point.x, point.y);
   }
 
-  function handleDrawPointerMove(event: PointerEvent<HTMLCanvasElement>) {
+  function continueSignatureStroke(canvas: HTMLCanvasElement, point: { x: number; y: number }) {
     if (!isDrawingSignatureRef.current) return;
 
-    const context = event.currentTarget.getContext("2d");
+    const context = canvas.getContext("2d");
     if (!context) return;
 
-    const point = getCanvasPoint(event);
     context.lineTo(point.x, point.y);
     context.stroke();
     drawSignatureHasInkRef.current = true;
     setDrawSignatureHasInk(true);
   }
 
-  function handleDrawPointerUp(event: PointerEvent<HTMLCanvasElement>) {
+  function finishSignatureStroke() {
     if (!isDrawingSignatureRef.current) return;
 
     isDrawingSignatureRef.current = false;
+    void useDrawnSignature();
+  }
+
+  function handleDrawPointerDown(event: PointerEvent<HTMLCanvasElement>) {
+    startSignatureStroke(event.currentTarget, getCanvasPoint(event));
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleDrawPointerMove(event: PointerEvent<HTMLCanvasElement>) {
+    continueSignatureStroke(event.currentTarget, getCanvasPoint(event));
+  }
+
+  function handleDrawPointerUp(event: PointerEvent<HTMLCanvasElement>) {
+    finishSignatureStroke();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    void useDrawnSignature();
+  }
+
+  function handleDrawMouseDown(event: MouseEvent<HTMLCanvasElement>) {
+    if (isDrawingSignatureRef.current) return;
+    startSignatureStroke(event.currentTarget, getCanvasMousePoint(event));
+  }
+
+  function handleDrawMouseMove(event: MouseEvent<HTMLCanvasElement>) {
+    continueSignatureStroke(event.currentTarget, getCanvasMousePoint(event));
+  }
+
+  function handleDrawMouseUp() {
+    finishSignatureStroke();
   }
 
   async function useDrawnSignature() {
@@ -476,6 +508,10 @@ export function SignPdfTool() {
                 onPointerMove={handleDrawPointerMove}
                 onPointerUp={handleDrawPointerUp}
                 onPointerCancel={handleDrawPointerUp}
+                onMouseDown={handleDrawMouseDown}
+                onMouseMove={handleDrawMouseMove}
+                onMouseUp={handleDrawMouseUp}
+                onMouseLeave={handleDrawMouseUp}
               />
               <span className={styles.helpText}>Tanda tangan langsung di area ini. Hasilnya otomatis dipakai setelah Anda selesai menggambar.</span>
             </div>
