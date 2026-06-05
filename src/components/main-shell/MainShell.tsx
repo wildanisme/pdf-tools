@@ -57,6 +57,7 @@ export function MainShell({ children }: MainShellProps) {
   const pathname = usePathname();
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [toolSearch, setToolSearch] = useState("");
 
   return (
     <div
@@ -69,6 +70,8 @@ export function MainShell({ children }: MainShellProps) {
         <aside className="hidden h-screen overflow-y-auto border-r border-slate-200 bg-white/90 p-3 lg:sticky lg:top-0 lg:block">
           <SidebarContent
             pathname={pathname}
+            searchQuery={toolSearch}
+            onSearchChange={setToolSearch}
             onNavigate={() => undefined}
             onCollapse={() => setDesktopSidebarOpen(false)}
           />
@@ -107,6 +110,8 @@ export function MainShell({ children }: MainShellProps) {
           <aside className="relative z-10 h-full w-[min(88vw,340px)] overflow-y-auto border-r border-slate-200 bg-white p-3 shadow-[20px_0_60px_rgb(15_23_42_/_22%)]">
             <SidebarContent
               pathname={pathname}
+              searchQuery={toolSearch}
+              onSearchChange={setToolSearch}
               onNavigate={() => setMobileToolsOpen(false)}
               onCollapse={() => setMobileToolsOpen(false)}
               mobile
@@ -164,53 +169,85 @@ function SidebarRail({ pathname, onExpand }: { pathname: string; onExpand: () =>
 
 function SidebarContent({
   pathname,
+  searchQuery,
+  onSearchChange,
   onNavigate,
   onCollapse,
   mobile = false,
 }: {
   pathname: string;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
   onNavigate: () => void;
   onCollapse: () => void;
   mobile?: boolean;
 }) {
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const hasSearch = normalizedSearch.length > 0;
+  const totalMatches = toolCatalog.filter((tool) => toolMatchesSearch(tool, normalizedSearch)).length;
+
   return (
     <>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <Link className="flex min-w-0 items-center gap-3" href="/" onClick={onNavigate}>
-          <div className="grid size-11 flex-none place-items-center rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-400 shadow-[0_14px_30px_rgb(16_185_129_/_22%)]">
-            <FileText className="text-white" size={22} />
-          </div>
-          <div className="min-w-0">
-            <strong className="block truncate text-lg tracking-normal">Privacy PDF</strong>
-            <span className="block truncate text-xs font-semibold text-slate-500">PDF tools, on your device</span>
-          </div>
-        </Link>
-        <button
-          className="grid size-9 flex-none place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700"
-          type="button"
-          aria-label={mobile ? "Tutup daftar tools" : "Sembunyikan sidebar tools"}
-          onClick={onCollapse}
-        >
-          {mobile ? <X size={18} /> : <PanelLeftClose size={18} />}
-        </button>
-      </div>
+      <div className="sticky top-0 z-20 -mx-3 -mt-3 mb-5 border-b border-slate-200 bg-white/95 px-3 pb-3 pt-3 backdrop-blur">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <Link className="flex min-w-0 items-center gap-3" href="/" onClick={onNavigate}>
+            <div className="grid size-11 flex-none place-items-center rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-400 shadow-[0_14px_30px_rgb(16_185_129_/_22%)]">
+              <FileText className="text-white" size={22} />
+            </div>
+            <div className="min-w-0">
+              <strong className="block truncate text-lg tracking-normal">Privacy PDF</strong>
+              <span className="block truncate text-xs font-semibold text-slate-500">PDF tools, on your device</span>
+            </div>
+          </Link>
+          <button
+            className="grid size-9 flex-none place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700"
+            type="button"
+            aria-label={mobile ? "Tutup daftar tools" : "Sembunyikan sidebar tools"}
+            onClick={onCollapse}
+          >
+            {mobile ? <X size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        </div>
 
-      <div className="mb-5 flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-slate-500">
-        <Search size={17} />
-        <span className="text-sm font-medium">Search tools...</span>
-        <kbd className="ml-auto rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-500">
-          soon
-        </kbd>
+        <label className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-slate-500 focus-within:border-emerald-500/40 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/15">
+          <Search size={17} />
+          <input
+            className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-500"
+            type="search"
+            value={searchQuery}
+            placeholder="Search tools..."
+            aria-label="Search PDF tools"
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+          {hasSearch ? (
+            <button
+              className="grid size-7 place-items-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              type="button"
+              aria-label="Clear tool search"
+              onClick={() => onSearchChange("")}
+            >
+              <X size={15} />
+            </button>
+          ) : null}
+        </label>
+
+        {hasSearch ? (
+          <div className="mt-2 px-1 text-xs font-semibold text-slate-500">
+            {totalMatches} {totalMatches === 1 ? "tool" : "tools"} found
+          </div>
+        ) : null}
       </div>
 
       <nav className="grid gap-5" aria-label="PDF tools">
-        <Link className={navClass(pathname === "/")} href="/" onClick={onNavigate}>
-          <FileText size={17} />
-          Home
-        </Link>
+        {!hasSearch ? (
+          <Link className={navClass(pathname === "/")} href="/" onClick={onNavigate}>
+            <FileText size={17} />
+            Home
+          </Link>
+        ) : null}
 
         {toolCategories.map((category) => {
-          const items = toolCatalog.filter((tool) => tool.category === category);
+          const items = toolCatalog.filter((tool) => tool.category === category && toolMatchesSearch(tool, normalizedSearch));
           if (items.length === 0) return null;
 
           return (
@@ -234,6 +271,12 @@ function SidebarContent({
             </div>
           );
         })}
+
+        {hasSearch && totalMatches === 0 ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-relaxed text-slate-500">
+            No tools match "{searchQuery.trim()}".
+          </div>
+        ) : null}
       </nav>
 
       <div className="mt-8 rounded-xl border border-emerald-500/20 bg-emerald-100/55 p-4 text-emerald-800">
@@ -261,6 +304,20 @@ function railClass(active: boolean) {
     "grid size-10 place-items-center rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-700",
     active ? "bg-emerald-50 text-emerald-700" : "",
   ].join(" ");
+}
+
+function toolMatchesSearch(tool: (typeof toolCatalog)[number], search: string) {
+  if (!search) return true;
+
+  const searchableText = [
+    tool.label,
+    tool.shortLabel,
+    tool.description,
+    tool.homeDescription,
+    tool.slug,
+  ].join(" ").toLowerCase();
+
+  return searchableText.includes(search);
 }
 
 function getIcon(tool: { id: PdfToolId; defaultLayoutAction?: "crop" | "resize" | "blank" | "nup" }) {
