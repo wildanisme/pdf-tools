@@ -1,8 +1,9 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Download, FileText, Scissors, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Download, FileImage, FileText, Scissors, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { extractPdfPages } from "@/lib/pdf/operations/extract";
+import { renderPdfPagePreviewUrls } from "@/lib/pdf/renderPdfToImage";
 import { PageRangeField, TextField, parsePages, requireActiveDocument } from "./shared";
 import { downloadResult, formatBytes, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
@@ -10,14 +11,93 @@ import styles from "./PdfTool.module.css";
 export function ExtractPdfTool() {
   const tool = usePdfToolController();
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [previewPage, setPreviewPage] = useState(1);
   const [pageRange, setPageRange] = useState("1");
+  const [selectedPageIndexes, setSelectedPageIndexes] = useState<number[]>([]);
+  const [pagePreviewUrls, setPagePreviewUrls] = useState<string[]>([]);
+  const [pagePreviewStatus, setPagePreviewStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [pagePreviewError, setPagePreviewError] = useState<string | null>(null);
 
-  const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length > 0;
+  const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length > 0 && selectedPageIndexes.length > 0;
+
+  useEffect(() => {
+    const document = tool.activeDocument;
+    setSelectedPageIndexes(document ? [0] : []);
+    setPageRange(document ? "1" : "");
+  }, [tool.activeDocument]);
+
+  useEffect(() => {
+    const document = tool.activeDocument;
+    let cancelled = false;
+    let urlsFromEffect: string[] = [];
+
+    setPagePreviewUrls([]);
+    setPagePreviewError(null);
+
+    if (!document) {
+      setPagePreviewStatus("idle");
+      return;
+    }
+
+    setPagePreviewStatus("loading");
+
+    renderPdfPagePreviewUrls(document.bytes, { pageCount: document.pageCount, scale: 0.22 })
+      .then((urls) => {
+        if (cancelled) {
+          urls.forEach((url) => URL.revokeObjectURL(url));
+          return;
+        }
+
+        urlsFromEffect = urls;
+        setPagePreviewUrls(urls);
+        setPagePreviewStatus("idle");
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled) return;
+        setPagePreviewError(caughtError instanceof Error ? caughtError.message : "Gagal membuat preview halaman.");
+        setPagePreviewStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+      urlsFromEffect.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [tool.activeDocument]);
 
   function handlePdfInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) void tool.handlePdfFiles(event.target.files);
     event.target.value = "";
+  }
+
+  function handlePageRangeChange(value: string) {
+    setPageRange(value);
+
+    if (!tool.activeDocument) return;
+
+    try {
+      setSelectedPageIndexes(parsePages(value, tool.activeDocument.pageCount));
+    } catch {
+      // Keep the last valid checkbox state while the user is editing an invalid range.
+    }
+  }
+
+  function togglePageSelection(pageIndex: number) {
+    setSelectedPageIndexes((current) => {
+      const next = current.includes(pageIndex) ? current.filter((selectedPage) => selectedPage !== pageIndex) : [...current, pageIndex].sort((first, second) => first - second);
+      setPageRange(formatPageIndexes(next));
+      return next;
+    });
+  }
+
+  function selectAllPages() {
+    if (!tool.activeDocument) return;
+    const next = Array.from({ length: tool.activeDocument.pageCount }, (_, index) => index);
+    setSelectedPageIndexes(next);
+    setPageRange(formatPageIndexes(next));
+  }
+
+  function clearSelectedPages() {
+    setSelectedPageIndexes([]);
+    setPageRange("");
   }
 
   return (
@@ -110,25 +190,69 @@ export function ExtractPdfTool() {
                   <span>Selected PDF</span>
                   <strong>{tool.activeDocument.name}</strong>
                 </div>
-                <small>{tool.activeDocument.pageCount} halaman</small>
+                <small>{selectedPageIndexes.length} dari {tool.activeDocument.pageCount} halaman dipilih</small>
               </div>
-              <div className={styles.pageStrip} aria-label="Page thumbnails">
-                {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={index + 1 === previewPage ? styles.pageChipActive : styles.pageChip}
-                    onClick={() => {
-                      setPreviewPage(index + 1);
-                      setPageRange(String(index + 1));
-                    }}
-                  >
-                    {index + 1}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3.5 py-2.5">
+                <p className="m-0 text-xs font-semibold text-slate-600">Centang halaman yang ingin diekstrak ke PDF baru.</p>
+                <div className="flex items-center gap-2">
+                  <button className="min-h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-extrabold text-slate-700 hover:border-emerald-500/35 hover:bg-emerald-50" type="button" onClick={selectAllPages}>
+                    Pilih semua
                   </button>
-                ))}
+                  <button className="min-h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-extrabold text-slate-700 hover:border-emerald-500/35 hover:bg-emerald-50" type="button" onClick={clearSelectedPages}>
+                    Bersihkan
+                  </button>
+                </div>
               </div>
-              <div className={styles.previewSurfaceCompact}>
-                <iframe className={styles.pdfFrameCompact} src={tool.activeDocumentUrl ?? undefined} title={`Preview ${tool.activeDocument.name}`} />
+              <div className="min-h-[360px] bg-slate-50 p-3.5">
+                {pagePreviewStatus === "loading" ? (
+                  <div className={styles.previewEmpty}>
+                    <Loader2 className={styles.spin} size={22} />
+                    <p>Membuat preview halaman...</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "error" ? (
+                  <div className={styles.previewEmpty}>
+                    <FileImage size={22} />
+                    <p>{pagePreviewError}</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "idle" ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="PDF pages">
+                    {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => {
+                      const checked = selectedPageIndexes.includes(index);
+                      const previewUrl = pagePreviewUrls[index];
+
+                      return (
+                        <label
+                          key={index}
+                          className={[
+                            "grid cursor-pointer gap-2 rounded-lg border bg-white p-2.5 shadow-[0_8px_24px_rgb(15_23_42_/_8%)] transition",
+                            checked ? "border-emerald-500 ring-2 ring-emerald-500/15" : "border-slate-200 hover:border-emerald-500/40",
+                          ].join(" ")}
+                          role="listitem"
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-extrabold text-slate-800">Page {index + 1}</span>
+                            <input
+                              className="size-4 accent-emerald-600"
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => togglePageSelection(index)}
+                              aria-label={`Extract page ${index + 1}`}
+                            />
+                          </span>
+                          <span
+                            className="block aspect-[3/4] rounded-md border border-slate-200 bg-white bg-contain bg-center bg-no-repeat"
+                            style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+                            aria-hidden="true"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -141,7 +265,7 @@ export function ExtractPdfTool() {
           </div>
           <div className={styles.optionStack}>
             <TextField label="Output name" value={tool.outputName} onChange={tool.setOutputName} placeholder="custom-result.pdf" />
-            <PageRangeField value={pageRange} onChange={setPageRange} totalPages={tool.activeDocument?.pageCount ?? 0} />
+            <PageRangeField value={pageRange} onChange={handlePageRangeChange} totalPages={tool.activeDocument?.pageCount ?? 0} />
           </div>
 
           {tool.error ? <div className={styles.errorBox}>{tool.error}</div> : null}
@@ -173,4 +297,8 @@ export function ExtractPdfTool() {
       </section>
     </main>
   );
+}
+
+function formatPageIndexes(pageIndexes: number[]) {
+  return pageIndexes.map((pageIndex) => pageIndex + 1).join(",");
 }

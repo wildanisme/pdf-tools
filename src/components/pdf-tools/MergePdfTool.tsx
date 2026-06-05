@@ -1,8 +1,10 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Download, FileText, Files, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Download, FileImage, FileText, Files, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { toArrayBuffer } from "@/lib/bytes";
 import { mergePdfDocuments } from "@/lib/pdf/operations/merge";
+import { renderPdfPageToImage } from "@/lib/pdf/renderPdfToImage";
 import { InfoBlock, TextField } from "./shared";
 import { downloadResult, formatBytes, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
@@ -10,7 +12,6 @@ import styles from "./PdfTool.module.css";
 export function MergePdfTool() {
   const tool = usePdfToolController();
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [previewPage, setPreviewPage] = useState(1);
 
   const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length >= 2;
 
@@ -75,7 +76,7 @@ export function MergePdfTool() {
                 <span>{tool.documents.length} PDF</span>
               </div>
 
-              <div className={styles.fileList}>
+              <div className="grid gap-2">
                 {tool.documents.length === 0 ? (
                   <div className={styles.emptyState}>
                     <FileText size={22} />
@@ -83,54 +84,50 @@ export function MergePdfTool() {
                   </div>
                 ) : (
                   tool.documents.map((document, index) => (
-                    <article key={document.id} className={document.id === tool.activeDocument?.id ? styles.fileItemActive : styles.fileItem}>
-                      <button className={styles.fileMainButton} type="button" onClick={() => tool.setActiveDocumentId(document.id)} aria-label={`Pilih ${document.name}`}>
-                        <FileText size={18} />
-                        <span>
-                          <strong>{document.name}</strong>
-                          <small>{document.pageCount} halaman · {formatBytes(document.size)}</small>
-                        </span>
-                      </button>
-                      <div className={styles.fileActions}>
-                        <button type="button" aria-label="Pindah file ke atas" disabled={index === 0} onClick={() => tool.moveDocument(document.id, -1)}><ArrowUp size={15} /></button>
-                        <button type="button" aria-label="Pindah file ke bawah" disabled={index === tool.documents.length - 1} onClick={() => tool.moveDocument(document.id, 1)}><ArrowDown size={15} /></button>
-                        <button type="button" aria-label="Hapus file" onClick={() => tool.removeDocument(document.id)}><Trash2 size={15} /></button>
+                    <article
+                      key={document.id}
+                      className="grid min-h-20 grid-cols-[56px_1fr] items-center gap-3 rounded-lg border border-slate-200 bg-white p-2.5 text-sm font-bold text-slate-800 transition sm:grid-cols-[64px_1fr_auto]"
+                    >
+                      <PdfThumbnail bytes={document.bytes} />
+                      <div>
+                        <strong className="block overflow-hidden text-ellipsis whitespace-nowrap">{document.name}</strong>
+                        <small className="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-slate-500">
+                          Position {index + 1} · {document.pageCount} halaman · {formatBytes(document.size)}
+                        </small>
+                      </div>
+                      <div className="col-span-full flex items-center justify-end gap-1 sm:col-auto">
+                        <button
+                          className="grid size-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                          type="button"
+                          aria-label={`Pindah file ke atas`}
+                          disabled={index === 0}
+                          onClick={() => tool.moveDocument(document.id, -1)}
+                        >
+                          <ArrowUp size={15} />
+                        </button>
+                        <button
+                          className="grid size-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                          type="button"
+                          aria-label={`Pindah file ke bawah`}
+                          disabled={index === tool.documents.length - 1}
+                          onClick={() => tool.moveDocument(document.id, 1)}
+                        >
+                          <ArrowDown size={15} />
+                        </button>
+                        <button
+                          className="grid size-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-emerald-500/35 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+                          type="button"
+                          aria-label={`Hapus file`}
+                          onClick={() => tool.removeDocument(document.id)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </article>
                   ))
                 )}
               </div>
           </section>
-
-          {tool.activeDocument ? (
-            <section className={styles.previewPanel} aria-label="PDF preview">
-              <div className={styles.previewToolbar}>
-                <div>
-                  <span>Selected PDF</span>
-                  <strong>{tool.activeDocument.name}</strong>
-                </div>
-                <small>{tool.activeDocument.pageCount} halaman</small>
-              </div>
-              <div className={styles.pageStrip} aria-label="Page thumbnails">
-                {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={index + 1 === previewPage ? styles.pageChipActive : styles.pageChip}
-                    onClick={() => {
-                      setPreviewPage(index + 1);
-                      
-                    }}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.previewSurfaceCompact}>
-                <iframe className={styles.pdfFrameCompact} src={tool.activeDocumentUrl ?? undefined} title={`Preview ${tool.activeDocument.name}`} />
-              </div>
-            </section>
-          ) : null}
         </div>
 
         <aside className={styles.actionPanel} aria-label="Tool options">
@@ -171,5 +168,44 @@ export function MergePdfTool() {
         </aside>
       </section>
     </main>
+  );
+}
+
+function PdfThumbnail({ bytes }: { bytes: Uint8Array }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(false);
+
+    renderPdfPageToImage(bytes, { pageIndex: 0, format: "image/png", scale: 0.3 })
+      .then((result) => {
+        if (cancelled) return;
+        const objectUrl = URL.createObjectURL(new Blob([toArrayBuffer(result.bytes)], { type: "image/png" }));
+        setUrl(objectUrl);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError(true);
+      });
+
+    return () => { cancelled = true; };
+  }, [bytes]);
+
+  if (error || !url) {
+    return (
+      <span className="grid size-14 shrink-0 place-items-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 sm:size-16" aria-hidden="true">
+        <FileImage size={20} />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="block size-14 shrink-0 rounded-lg border border-slate-200 bg-slate-100 bg-cover bg-center sm:size-16"
+      style={{ backgroundImage: `url(${url})` }}
+      aria-hidden="true"
+    />
   );
 }

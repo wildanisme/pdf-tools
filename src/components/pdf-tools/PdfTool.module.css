@@ -68,7 +68,7 @@
 }
 
 .actionPanel {
-  @apply xl:sticky xl:top-6 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto;
+  @apply lg:sticky lg:top-6 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto;
 }
 
 .sectionHeader,
