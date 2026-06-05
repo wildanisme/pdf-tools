@@ -192,7 +192,7 @@ export async function addPageNumbers(
 export async function addSignatureImage(
   bytes: Uint8Array,
   imageInput: ImageInput,
-  options: { pageIndex: number; width: number },
+  options: { pageIndex: number; width: number; xRatio?: number; yRatio?: number; widthRatio?: number },
 ): Promise<PdfProcessingResult> {
   if (imageInput.type === "image/webp") {
     throw new Error("Signature WebP belum didukung. Gunakan PNG atau JPEG.");
@@ -204,12 +204,14 @@ export async function addSignatureImage(
   const image =
     imageInput.type === "image/png" ? await pdf.embedPng(imageInput.bytes) : await pdf.embedJpg(imageInput.bytes);
   const page = pdf.getPage(options.pageIndex);
-  const width = Math.min(options.width, page.getWidth() - 48);
+  const width = Math.min(options.widthRatio ? page.getWidth() * options.widthRatio : options.width, page.getWidth() - 48);
   const height = width * (image.height / image.width);
+  const x = options.xRatio === undefined ? page.getWidth() - width - 36 : clamp(options.xRatio * page.getWidth(), 0, page.getWidth() - width);
+  const y = options.yRatio === undefined ? 36 : clamp(page.getHeight() - (options.yRatio * page.getHeight()) - height, 0, page.getHeight() - height);
 
   page.drawImage(image, {
-    x: page.getWidth() - width - 36,
-    y: 36,
+    x,
+    y,
     width,
     height,
   });
@@ -366,6 +368,10 @@ async function savePdf(pdf: PDFDocument, fileName: string): Promise<PdfProcessin
     pageCount: pdf.getPageCount(),
     mimeType: "application/pdf",
   };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function validatePageIndexes(pageIndexes: number[], totalPages: number) {

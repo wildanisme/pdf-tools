@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:all": "npm run lint && npm test && npm run test:e2e",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@eslint/js": "latest",
     "@next/eslint-plugin-next": "latest",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@testing-library/react": "latest",
     "@types/node": "latest",

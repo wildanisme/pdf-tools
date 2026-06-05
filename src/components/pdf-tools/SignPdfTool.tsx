@@ -1,26 +1,110 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
+import { ChangeEvent, PointerEvent, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Download, FileText, FileSignature, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { toArrayBuffer } from "@/lib/bytes";
 import { addSignatureImage, type ImageInput } from "@/lib/pdf/operations/advanced";
+import { renderPdfPageToImage } from "@/lib/pdf/renderPdfToImage";
 import { getErrorMessage, NumberField, readImageInputs, TextField, requireActiveDocument } from "./shared";
 import { downloadResult, formatBytes, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
 
+type SignaturePlacement = {
+  x: number;
+  y: number;
+  width: number;
+};
+
+type SignatureInteraction = "move" | "resize" | null;
+
 export function SignPdfTool() {
   const tool = usePdfToolController();
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [previewPage, setPreviewPage] = useState(1);
+  const previewPageRef = useRef<HTMLDivElement>(null);
+  const pointerOffsetRef = useRef({ x: 0, y: 0 });
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const [signatureImage, setSignatureImage] = useState<ImageInput | null>(null);
-  const [signatureWidth, setSignatureWidth] = useState(140);
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
+  const [signatureAspectRatio, setSignatureAspectRatio] = useState(3);
+  const [signaturePlacement, setSignaturePlacement] = useState<SignaturePlacement>({ x: 0.62, y: 0.72, width: 0.24 });
+  const [signatureInteraction, setSignatureInteraction] = useState<SignatureInteraction>(null);
+  const [pagePreviewUrl, setPagePreviewUrl] = useState<string | null>(null);
+  const [pagePreviewStatus, setPagePreviewStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [pagePreviewError, setPagePreviewError] = useState<string | null>(null);
   const [pdfImagePage, setPdfImagePage] = useState(1);
+  const signatureSizePercent = Math.round(signaturePlacement.width * 100);
+
+  useEffect(() => {
+    setPdfImagePage(1);
+  }, [tool.activeDocument?.id]);
+
+  useEffect(() => {
+    if (!signatureImage) {
+      setSignaturePreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(new Blob([toArrayBuffer(signatureImage.bytes)], { type: signatureImage.type }));
+    setSignaturePreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [signatureImage]);
+
+  useEffect(() => {
+    if (!signaturePreviewUrl) return;
+
+    const image = new Image();
+    image.onload = () => {
+      if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setSignatureAspectRatio(image.naturalWidth / image.naturalHeight);
+      }
+    };
+    image.src = signaturePreviewUrl;
+  }, [signaturePreviewUrl]);
+
+  useEffect(() => {
+    const document = tool.activeDocument;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    setPagePreviewUrl(null);
+    setPagePreviewError(null);
+
+    if (!document) {
+      setPagePreviewStatus("idle");
+      return;
+    }
+
+    setPagePreviewStatus("loading");
+
+    renderPdfPageToImage(document.bytes, {
+      pageIndex: Math.max(0, Math.min(document.pageCount - 1, pdfImagePage - 1)),
+      format: "image/png",
+      scale: 0.9,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(new Blob([toArrayBuffer(result.bytes)], { type: "image/png" }));
+        setPagePreviewUrl(objectUrl);
+        setPagePreviewStatus("idle");
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled) return;
+        setPagePreviewError(caughtError instanceof Error ? caughtError.message : "Gagal membuat preview halaman.");
+        setPagePreviewStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [tool.activeDocument, pdfImagePage]);
 
   async function handleSignatureFiles(files: FileList | File[]) {
     try {
       tool.setError(null);
       const [nextImage] = await readImageInputs(files);
       setSignatureImage(nextImage ?? null);
+      setSignaturePlacement({ x: 0.62, y: 0.72, width: 0.24 });
     } catch (caughtError) {
       tool.setError(getErrorMessage(caughtError, "Gagal membaca signature."));
     }
@@ -37,6 +121,80 @@ export function SignPdfTool() {
     if (event.target.files) void tool.handlePdfFiles(event.target.files);
     event.target.value = "";
   }
+
+  function updateSignatureSize(sizePercent: number) {
+    const nextWidth = clamp(sizePercent / 100, 0.08, 0.62);
+    setSignaturePlacement((current) => clampPlacement({ ...current, width: nextWidth }, signatureAspectRatio));
+  }
+
+  function getPointerPosition(event: PointerEvent<HTMLElement>) {
+    const rect = previewPageRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    return {
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
+    };
+  }
+
+  function handleSignaturePointerDown(event: PointerEvent<HTMLDivElement>) {
+    const pointerPosition = getPointerPosition(event);
+    if (!pointerPosition) return;
+
+    pointerOffsetRef.current = {
+      x: pointerPosition.x - signaturePlacement.x,
+      y: pointerPosition.y - signaturePlacement.y,
+    };
+    setSignatureInteraction("move");
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleResizePointerDown(event: PointerEvent<HTMLSpanElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setSignatureInteraction("resize");
+    event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
+  }
+
+  function handleSignaturePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const pointerPosition = getPointerPosition(event);
+    if (!pointerPosition || !signatureInteraction) return;
+
+    if (signatureInteraction === "move") {
+      setSignaturePlacement((current) => clampPlacement({
+        ...current,
+        x: pointerPosition.x - pointerOffsetRef.current.x,
+        y: pointerPosition.y - pointerOffsetRef.current.y,
+      }, signatureAspectRatio));
+      return;
+    }
+
+    setSignaturePlacement((current) => clampPlacement({
+      ...current,
+      width: clamp(pointerPosition.x - current.x, 0.08, 0.62),
+    }, signatureAspectRatio));
+  }
+
+  function stopSignatureInteraction(event: PointerEvent<HTMLDivElement>) {
+    setSignatureInteraction(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+}
+
+function clampPlacement(placement: SignaturePlacement, aspectRatio: number): SignaturePlacement {
+  const height = placement.width / Math.max(0.1, aspectRatio);
+
+  return {
+    width: clamp(placement.width, 0.08, 0.62),
+    x: clamp(placement.x, 0, Math.max(0, 1 - placement.width)),
+    y: clamp(placement.y, 0, Math.max(0, 1 - height)),
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
   return (
     <main className={styles.workspace}>
@@ -135,18 +293,63 @@ export function SignPdfTool() {
                   <button
                     key={index}
                     type="button"
-                    className={index + 1 === previewPage ? styles.pageChipActive : styles.pageChip}
-                    onClick={() => {
-                      setPreviewPage(index + 1);
-                      setPdfImagePage(index + 1);
-                    }}
+                    className={index + 1 === pdfImagePage ? styles.pageChipActive : styles.pageChip}
+                    onClick={() => setPdfImagePage(index + 1)}
                   >
                     {index + 1}
                   </button>
                 ))}
               </div>
-              <div className={styles.previewSurfaceCompact}>
-                <iframe className={styles.pdfFrameCompact} src={tool.activeDocumentUrl ?? undefined} title={`Preview ${tool.activeDocument.name}`} />
+              <div className="min-h-[420px] bg-slate-50 p-3.5">
+                {pagePreviewStatus === "loading" ? (
+                  <div className={styles.previewEmpty}>
+                    <Loader2 className={styles.spin} size={22} />
+                    <p>Membuat preview halaman...</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "error" ? (
+                  <div className={styles.previewEmpty}>
+                    <FileSignature size={22} />
+                    <p>{pagePreviewError}</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "idle" && pagePreviewUrl ? (
+                  <div ref={previewPageRef} className="relative mx-auto w-fit max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_16px_42px_rgb(15_23_42_/_12%)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="block max-h-[68vh] max-w-full select-none" src={pagePreviewUrl} alt={`Preview page ${pdfImagePage}`} draggable={false} />
+                    {signaturePreviewUrl ? (
+                      <div
+                        className="absolute touch-none select-none rounded-md border border-emerald-500/70 bg-emerald-50/25 shadow-[0_8px_20px_rgb(15_23_42_/_16%)]"
+                        style={{
+                          left: `${signaturePlacement.x * 100}%`,
+                          top: `${signaturePlacement.y * 100}%`,
+                          width: `${signaturePlacement.width * 100}%`,
+                        }}
+                        onPointerDown={handleSignaturePointerDown}
+                        onPointerMove={handleSignaturePointerMove}
+                        onPointerUp={stopSignatureInteraction}
+                        onPointerCancel={stopSignatureInteraction}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Signature placement"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img className="block w-full pointer-events-none" src={signaturePreviewUrl} alt="" draggable={false} />
+                        <span
+                          className="absolute -bottom-2 -right-2 size-5 cursor-nwse-resize rounded-full border-2 border-white bg-emerald-600 shadow"
+                          onPointerDown={handleResizePointerDown}
+                          aria-hidden="true"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "idle" && pagePreviewUrl && !signaturePreviewUrl ? (
+                  <p className="m-0 mt-3 text-center text-sm font-semibold text-slate-600">Upload signature untuk menempatkannya di halaman ini.</p>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -161,9 +364,19 @@ export function SignPdfTool() {
             <TextField label="Output name" value={tool.outputName} onChange={tool.setOutputName} placeholder="custom-result.pdf" />
             <button className={styles.secondaryButton} type="button" onClick={() => signatureInputRef.current?.click()}>Pilih signature</button>
             <input ref={signatureInputRef} className={styles.hiddenInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleSignatureInputChange} />
-            <span className={styles.helpText}>{signatureImage?.name ?? "Belum ada gambar signature."}</span>
+            {signaturePreviewUrl ? (
+              <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <div className="grid min-h-20 place-items-center rounded-md border border-dashed border-emerald-500/35 bg-white p-2">
+                  <span className="block h-16 w-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${signaturePreviewUrl})` }} aria-hidden="true" />
+                </div>
+                <span className={styles.helpText}>{signatureImage?.name}</span>
+              </div>
+            ) : (
+              <span className={styles.helpText}>Belum ada gambar signature.</span>
+            )}
+            <span className={styles.helpText}>Drag signature di preview untuk memindahkan posisi. Tarik titik kanan bawah untuk resize.</span>
             <NumberField label="Page" value={pdfImagePage} onChange={setPdfImagePage} min={1} max={Math.max(1, tool.activeDocument?.pageCount ?? 1)} />
-            <NumberField label="Width" value={signatureWidth} onChange={setSignatureWidth} min={40} max={320} />
+            <NumberField label="Size (%)" value={signatureSizePercent} onChange={updateSignatureSize} min={8} max={62} />
           </div>
 
           {tool.error ? <div className={styles.errorBox}>{tool.error}</div> : null}
@@ -179,7 +392,7 @@ export function SignPdfTool() {
           ) : null}
 
           <div className={styles.actionButtons}>
-            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(() => { const document = requireActiveDocument(tool.activeDocument); if (!signatureImage) throw new Error("Pilih gambar tanda tangan terlebih dahulu."); return addSignatureImage(document.bytes, signatureImage, { pageIndex: Math.max(0, Math.min(document.pageCount - 1, pdfImagePage - 1)), width: signatureWidth }); })} disabled={!(canProcess)}>
+            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(() => { const document = requireActiveDocument(tool.activeDocument); if (!signatureImage) throw new Error("Pilih gambar tanda tangan terlebih dahulu."); return addSignatureImage(document.bytes, signatureImage, { pageIndex: Math.max(0, Math.min(document.pageCount - 1, pdfImagePage - 1)), width: 140, xRatio: signaturePlacement.x, yRatio: signaturePlacement.y, widthRatio: signaturePlacement.width }); })} disabled={!(canProcess)}>
               {tool.status === "processing" || tool.status === "loading" ? <Loader2 className={styles.spin} size={18} /> : null}
               Proses
             </button>
