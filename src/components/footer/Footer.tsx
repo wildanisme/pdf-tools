@@ -2,7 +2,7 @@ import React from 'react';
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <footer className="bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 mb-5">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Products</h3>
@@ -16,7 +16,7 @@ const Footer = () => {
           <ul className="mt-4 space-y-4">
             <li><a href="https://summitct.co.id?utm_source=pdf.wildanisme.com" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">Summit Citra Teknologi</a></li>
             <li><a href="#" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Motekar Teknologi Indonesia</a></li>
-            <li><a href="#" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">About Us</a></li>
+            <li><a href="https://wildanisme.com" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">About Us</a></li>
           </ul>
         </div>
         <div>
