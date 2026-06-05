@@ -1,8 +1,9 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Download, FileText, ListRestart, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Download, FileImage, FileText, ListRestart, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { addPageNumbers } from "@/lib/pdf/operations/advanced";
+import { renderPdfPagePreviewUrls } from "@/lib/pdf/renderPdfToImage";
 import { NumberField, TextField, requireActiveDocument } from "./shared";
 import { downloadResult, formatBytes, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
@@ -10,11 +11,51 @@ import styles from "./PdfTool.module.css";
 export function PageNumbersTool() {
   const tool = usePdfToolController();
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [previewPage, setPreviewPage] = useState(1);
+  const [pagePreviewUrls, setPagePreviewUrls] = useState<string[]>([]);
+  const [pagePreviewStatus, setPagePreviewStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [pagePreviewError, setPagePreviewError] = useState<string | null>(null);
   const [pageNumberPrefix, setPageNumberPrefix] = useState("Page ");
   const [pageNumberStart, setPageNumberStart] = useState(1);
 
   const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length > 0;
+
+  useEffect(() => {
+    const document = tool.activeDocument;
+    let cancelled = false;
+    let urlsFromEffect: string[] = [];
+
+    setPagePreviewUrls([]);
+    setPagePreviewError(null);
+
+    if (!document) {
+      setPagePreviewStatus("idle");
+      return;
+    }
+
+    setPagePreviewStatus("loading");
+
+    renderPdfPagePreviewUrls(document.bytes, { pageCount: document.pageCount, scale: 0.22 })
+      .then((urls) => {
+        if (cancelled) {
+          urls.forEach((url) => URL.revokeObjectURL(url));
+          return;
+        }
+
+        urlsFromEffect = urls;
+        setPagePreviewUrls(urls);
+        setPagePreviewStatus("idle");
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled) return;
+        setPagePreviewError(caughtError instanceof Error ? caughtError.message : "Gagal membuat preview halaman.");
+        setPagePreviewStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+      urlsFromEffect.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [tool.activeDocument]);
 
   function handlePdfInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) void tool.handlePdfFiles(event.target.files);
@@ -113,23 +154,54 @@ export function PageNumbersTool() {
                 </div>
                 <small>{tool.activeDocument.pageCount} halaman</small>
               </div>
-              <div className={styles.pageStrip} aria-label="Page thumbnails">
-                {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={index + 1 === previewPage ? styles.pageChipActive : styles.pageChip}
-                    onClick={() => {
-                      setPreviewPage(index + 1);
-                      
-                    }}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3.5 py-2.5">
+                <p className="m-0 text-xs font-semibold text-slate-600">Preview nomor halaman sebelum export. Nomor akan diterapkan ke semua halaman.</p>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-slate-600 ring-1 ring-slate-200">
+                  2 kolom
+                </span>
               </div>
-              <div className={styles.previewSurfaceCompact}>
-                <iframe className={styles.pdfFrameCompact} src={tool.activeDocumentUrl ?? undefined} title={`Preview ${tool.activeDocument.name}`} />
+              <div className="min-h-[360px] bg-slate-50 p-3.5">
+                {pagePreviewStatus === "loading" ? (
+                  <div className={styles.previewEmpty}>
+                    <Loader2 className={styles.spin} size={22} />
+                    <p>Membuat preview halaman...</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "error" ? (
+                  <div className={styles.previewEmpty}>
+                    <FileImage size={22} />
+                    <p>{pagePreviewError}</p>
+                  </div>
+                ) : null}
+
+                {pagePreviewStatus === "idle" ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="list" aria-label="PDF pages">
+                    {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => {
+                      const previewUrl = pagePreviewUrls[index];
+                      const pageLabel = `${pageNumberPrefix}${pageNumberStart + index}`;
+
+                      return (
+                        <article key={index} className="grid gap-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(15_23_42_/_8%)]" role="listitem">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-extrabold text-slate-800">Page {index + 1}</span>
+                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-extrabold text-emerald-700">{pageLabel}</span>
+                          </span>
+                          <span className="relative block aspect-[3/4] overflow-hidden rounded-md border border-slate-200 bg-white">
+                            <span
+                              className="block h-full w-full bg-contain bg-center bg-no-repeat"
+                              style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+                              aria-hidden="true"
+                            />
+                            <span className="absolute bottom-[6%] left-1/2 -translate-x-1/2 rounded bg-white/85 px-2 py-1 text-[11px] font-extrabold text-slate-950 shadow-sm ring-1 ring-slate-200">
+                              {pageLabel}
+                            </span>
+                          </span>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             </section>
           ) : null}
