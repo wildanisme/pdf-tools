@@ -9,6 +9,9 @@ export type ImageInput = {
 
 export type PageSizePreset = "original" | "a4" | "letter" | "square";
 
+export type PageNumberFormat = "number" | "page" | "of-n";
+export type PageNumberPosition = "bottom-center" | "bottom-right" | "top-center" | "top-right" | "center-right";
+
 export type MetadataInput = {
   title?: string;
   author?: string;
@@ -265,19 +268,56 @@ export async function addWatermark(
 
 export async function addPageNumbers(
   bytes: Uint8Array,
-  options: { prefix: string; startAt: number },
+  options: {
+    format: PageNumberFormat;
+    startAt: number;
+    totalPages: number;
+    position: PageNumberPosition;
+  },
 ): Promise<PdfProcessingResult> {
   const pdf = await PDFDocument.load(bytes);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
 
   pdf.getPages().forEach((page, index) => {
-    const label = `${options.prefix}${options.startAt + index}`;
+    const pageNumber = options.startAt + index;
+    const label = options.format === "of-n"
+      ? `${pageNumber} of ${options.startAt + options.totalPages - 1}`
+      : options.format === "page"
+        ? `Page ${pageNumber}`
+        : `${pageNumber}`;
     const size = 10;
     const textWidth = font.widthOfTextAtSize(label, size);
+    const padding = 36;
+
+    let x: number;
+    let y: number;
+
+    switch (options.position) {
+      case "bottom-center":
+        x = (page.getWidth() - textWidth) / 2;
+        y = padding;
+        break;
+      case "bottom-right":
+        x = page.getWidth() - textWidth - padding;
+        y = padding;
+        break;
+      case "top-center":
+        x = (page.getWidth() - textWidth) / 2;
+        y = page.getHeight() - padding;
+        break;
+      case "top-right":
+        x = page.getWidth() - textWidth - padding;
+        y = page.getHeight() - padding;
+        break;
+      case "center-right":
+        x = page.getWidth() - textWidth - padding;
+        y = page.getHeight() / 2 - size / 2;
+        break;
+    }
 
     page.drawText(label, {
-      x: (page.getWidth() - textWidth) / 2,
-      y: 24,
+      x,
+      y,
       size,
       font,
       color: rgb(0.28, 0.33, 0.41),

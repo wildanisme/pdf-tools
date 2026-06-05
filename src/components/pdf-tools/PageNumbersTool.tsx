@@ -2,11 +2,33 @@
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Download, FileImage, FileText, ListRestart, Loader2, ShieldCheck, Trash2, Upload } from "lucide-react";
-import { addPageNumbers } from "@/lib/pdf/operations/advanced";
+import { addPageNumbers, type PageNumberFormat, type PageNumberPosition } from "@/lib/pdf/operations/advanced";
 import { renderPdfPagePreviewUrls } from "@/lib/pdf/renderPdfToImage";
-import { NumberField, TextField, requireActiveDocument } from "./shared";
+import { NumberField, SelectField, TextField, requireActiveDocument } from "./shared";
 import { downloadResult, formatBytes, usePdfToolController } from "./shared";
 import styles from "./PdfTool.module.css";
+
+const FORMAT_OPTIONS: Array<[PageNumberFormat, string]> = [
+  ["number", "1 (just number)"],
+  ["page", "Page n"],
+  ["of-n", "1 of n"],
+];
+
+const POSITION_OPTIONS: Array<[PageNumberPosition, string]> = [
+  ["bottom-center", "Bottom center"],
+  ["bottom-right", "Bottom right"],
+  ["top-center", "Top center"],
+  ["top-right", "Top right"],
+  ["center-right", "Center right"],
+];
+
+const POSITION_CLASSES: Record<PageNumberPosition, string> = {
+  "bottom-center": "bottom-[6%] left-1/2 -translate-x-1/2",
+  "bottom-right": "bottom-[6%] right-[6%]",
+  "top-center": "top-[6%] left-1/2 -translate-x-1/2",
+  "top-right": "top-[6%] right-[6%]",
+  "center-right": "top-1/2 right-[6%] -translate-y-1/2",
+};
 
 export function PageNumbersTool() {
   const tool = usePdfToolController();
@@ -14,8 +36,9 @@ export function PageNumbersTool() {
   const [pagePreviewUrls, setPagePreviewUrls] = useState<string[]>([]);
   const [pagePreviewStatus, setPagePreviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pagePreviewError, setPagePreviewError] = useState<string | null>(null);
-  const [pageNumberPrefix, setPageNumberPrefix] = useState("Page ");
+  const [pageNumberFormat, setPageNumberFormat] = useState<PageNumberFormat>("page");
   const [pageNumberStart, setPageNumberStart] = useState(1);
+  const [pageNumberPosition, setPageNumberPosition] = useState<PageNumberPosition>("bottom-center");
 
   const canProcess = tool.status !== "loading" && tool.status !== "processing" && tool.documents.length > 0;
 
@@ -60,6 +83,20 @@ export function PageNumbersTool() {
   function handlePdfInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) void tool.handlePdfFiles(event.target.files);
     event.target.value = "";
+  }
+
+  function getPageLabel(index: number): string {
+    const pageNumber = pageNumberStart + index;
+    const totalPages = tool.activeDocument?.pageCount ?? 0;
+
+    switch (pageNumberFormat) {
+      case "of-n":
+        return `${pageNumber} of ${pageNumberStart + totalPages - 1}`;
+      case "page":
+        return `Page ${pageNumber}`;
+      default:
+        return `${pageNumber}`;
+    }
   }
 
   return (
@@ -179,7 +216,7 @@ export function PageNumbersTool() {
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="list" aria-label="PDF pages">
                     {Array.from({ length: tool.activeDocument.pageCount }, (_, index) => {
                       const previewUrl = pagePreviewUrls[index];
-                      const pageLabel = `${pageNumberPrefix}${pageNumberStart + index}`;
+                      const pageLabel = getPageLabel(index);
 
                       return (
                         <article key={index} className="grid gap-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(15_23_42_/_8%)]" role="listitem">
@@ -193,7 +230,7 @@ export function PageNumbersTool() {
                               style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
                               aria-hidden="true"
                             />
-                            <span className="absolute bottom-[6%] left-1/2 -translate-x-1/2 rounded bg-white/85 px-2 py-1 text-[11px] font-extrabold text-slate-950 shadow-sm ring-1 ring-slate-200">
+                            <span className={`absolute rounded bg-white/85 px-2 py-1 text-[11px] font-extrabold text-slate-950 shadow-sm ring-1 ring-slate-200 ${POSITION_CLASSES[pageNumberPosition]}`}>
                               {pageLabel}
                             </span>
                           </span>
@@ -214,8 +251,14 @@ export function PageNumbersTool() {
           </div>
           <div className={styles.optionStack}>
             <TextField label="Output name" value={tool.outputName} onChange={tool.setOutputName} placeholder="custom-result.pdf" />
-            <TextField label="Prefix" value={pageNumberPrefix} onChange={setPageNumberPrefix} />
+            <SelectField label="Format" value={pageNumberFormat} onChange={(value) => setPageNumberFormat(value as PageNumberFormat)} options={FORMAT_OPTIONS} />
+            <SelectField label="Position" value={pageNumberPosition} onChange={(value) => setPageNumberPosition(value as PageNumberPosition)} options={POSITION_OPTIONS} />
             <NumberField label="Start at" value={pageNumberStart} onChange={setPageNumberStart} min={0} max={9999} />
+            <span className={styles.helpText}>
+              {tool.activeDocument
+                ? `Nomor akan diterapkan ke ${tool.activeDocument.pageCount} halaman.`
+                : "Pilih PDF terlebih dahulu."}
+            </span>
           </div>
 
           {tool.error ? <div className={styles.errorBox}>{tool.error}</div> : null}
@@ -231,7 +274,15 @@ export function PageNumbersTool() {
           ) : null}
 
           <div className={styles.actionButtons}>
-            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(() => addPageNumbers(requireActiveDocument(tool.activeDocument).bytes, { prefix: pageNumberPrefix, startAt: pageNumberStart }))} disabled={!(canProcess)}>
+            <button className={styles.primaryButton} type="button" onClick={() => void tool.handleProcess(() => {
+              const doc = requireActiveDocument(tool.activeDocument);
+              return addPageNumbers(doc.bytes, {
+                format: pageNumberFormat,
+                startAt: pageNumberStart,
+                totalPages: doc.pageCount,
+                position: pageNumberPosition,
+              });
+            })} disabled={!(canProcess)}>
               {tool.status === "processing" || tool.status === "loading" ? <Loader2 className={styles.spin} size={18} /> : null}
               Proses
             </button>

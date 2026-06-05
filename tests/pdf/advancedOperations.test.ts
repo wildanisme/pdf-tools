@@ -96,7 +96,7 @@ describe("advanced PDF operations", () => {
       placement: "center",
       repeat: true,
     });
-    const numbered = await addPageNumbers(watermarked.bytes, { prefix: "Page ", startAt: 1 });
+    const numbered = await addPageNumbers(watermarked.bytes, { format: "page", startAt: 1, totalPages: 2, position: "bottom-center" });
     const pdf = await PDFDocument.load(numbered.bytes);
 
     expect(pdf.getPageCount()).toBe(2);
