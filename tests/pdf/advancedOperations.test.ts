@@ -94,6 +94,7 @@ describe("advanced PDF operations", () => {
       rotation: -35,
       color: "#0d7a56",
       placement: "center",
+      repeat: true,
     });
     const numbered = await addPageNumbers(watermarked.bytes, { prefix: "Page ", startAt: 1 });
     const pdf = await PDFDocument.load(numbered.bytes);

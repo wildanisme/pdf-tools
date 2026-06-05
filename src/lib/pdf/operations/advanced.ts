@@ -31,6 +31,7 @@ export type WatermarkOptions = {
   xRatio?: number;
   yRatio?: number;
   imageWidthRatio?: number;
+  repeat?: boolean;
 };
 
 const PAGE_SIZES: Record<Exclude<PageSizePreset, "original">, [number, number]> = {
@@ -182,6 +183,7 @@ export async function addWatermark(
   const opacity = clamp(options.opacity, 0.02, 1);
   const rotation = degrees(options.rotation);
   const watermarkColor = parseWatermarkColor(options.color);
+  const repeatWatermark = Boolean(options.repeat) || options.placement === "tiled";
 
   validatePageIndexes(pageIndexes, pdf.getPageCount());
 
@@ -212,7 +214,7 @@ export async function addWatermark(
       const itemWidth = width * clamp(options.imageWidthRatio ?? 0.32, 0.08, 0.82);
       const itemHeight = itemWidth * (watermarkImage.height / watermarkImage.width);
 
-      if (options.placement === "tiled") {
+      if (repeatWatermark) {
         for (let y = -itemHeight; y < height + itemHeight; y += itemHeight + 96) {
           for (let x = -itemWidth; x < width + itemWidth; x += itemWidth + 120) {
             page.drawImage(watermarkImage, { x, y, width: itemWidth, height: itemHeight, opacity, rotate: rotation });
@@ -230,7 +232,7 @@ export async function addWatermark(
     const textWidth = font.widthOfTextAtSize(safeText, options.fontSize);
     const textHeight = options.fontSize;
 
-    if (options.placement === "tiled") {
+    if (repeatWatermark) {
       for (let y = -textHeight; y < height + textHeight; y += options.fontSize * 3.1) {
         for (let x = -textWidth; x < width + textWidth; x += Math.max(textWidth + 120, 220)) {
           page.drawText(safeText, {

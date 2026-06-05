@@ -47,6 +47,7 @@ export function WatermarkPdfTool() {
   const [watermarkRotation, setWatermarkRotation] = useState(-35);
   const [watermarkColor, setWatermarkColor] = useState("#0d7a56");
   const [watermarkPlacement, setWatermarkPlacement] = useState<WatermarkPlacement>("center");
+  const [watermarkRepeat, setWatermarkRepeat] = useState(false);
   const [customPosition, setCustomPosition] = useState({ x: 0.38, y: 0.42 });
   const [isDraggingWatermark, setIsDraggingWatermark] = useState(false);
   const [imageWidthPercent, setImageWidthPercent] = useState(32);
@@ -223,6 +224,7 @@ export function WatermarkPdfTool() {
       xRatio: customPosition.x,
       yRatio: customPosition.y,
       imageWidthRatio: imageWidthPercent / 100,
+      repeat: watermarkRepeat,
     });
   }
 
@@ -355,6 +357,7 @@ export function WatermarkPdfTool() {
                         mode={watermarkMode}
                         opacity={watermarkOpacity}
                         placement={watermarkPlacement}
+                        repeat={watermarkRepeat}
                         rotation={watermarkRotation}
                         text={watermarkText}
                         onPointerCancel={stopWatermarkDrag}
@@ -421,13 +424,24 @@ export function WatermarkPdfTool() {
             </label>
             <NumberField label="Opacity" value={watermarkOpacity} onChange={setWatermarkOpacity} min={0.02} max={0.9} step={0.02} />
             <NumberField label="Rotation" value={watermarkRotation} onChange={setWatermarkRotation} min={-90} max={90} step={5} />
+            <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <input
+                className="mt-1 h-4 w-4 accent-emerald-600"
+                type="checkbox"
+                checked={watermarkRepeat}
+                onChange={(event) => setWatermarkRepeat(event.target.checked)}
+              />
+              <span className="grid gap-1">
+                <span className="text-sm font-extrabold text-slate-800">Repeat watermark</span>
+                <span className="text-xs font-semibold leading-5 text-slate-500">Ulangi watermark memenuhi halaman. Cocok untuk dokumen draft, confidential, atau sample.</span>
+              </span>
+            </label>
             <SelectField
               label="Placement"
               value={watermarkPlacement}
               onChange={(value) => setWatermarkPlacement(value as WatermarkPlacement)}
               options={[
                 ["center", "Center"],
-                ["tiled", "Repeated / tiled"],
                 ["custom", "Custom drag"],
                 ["top-left", "Top left"],
                 ["top-right", "Top right"],
@@ -435,7 +449,8 @@ export function WatermarkPdfTool() {
                 ["bottom-right", "Bottom right"],
               ]}
             />
-            {watermarkPlacement === "custom" ? <span className={styles.helpText}>Drag watermark di preview untuk mengatur posisi.</span> : null}
+            {watermarkRepeat ? <span className={styles.helpText}>Saat repeat aktif, placement dipakai hanya ketika repeat dimatikan.</span> : null}
+            {!watermarkRepeat && watermarkPlacement === "custom" ? <span className={styles.helpText}>Drag watermark di preview untuk mengatur posisi.</span> : null}
             <SelectField label="Apply to" value={pageScope} onChange={(value) => setPageScope(value as PageScope)} options={[["all", "All pages"], ["current", "Current preview page"], ["range", "Page range"]]} />
             {pageScope === "range" ? <TextField label="Page range" value={pageRange} onChange={setPageRange} placeholder="1-3,5" /> : null}
           </div>
@@ -480,6 +495,7 @@ function WatermarkPreviewOverlay({
   mode,
   opacity,
   placement,
+  repeat,
   rotation,
   text,
   onPointerCancel,
@@ -495,6 +511,7 @@ function WatermarkPreviewOverlay({
   mode: WatermarkMode;
   opacity: number;
   placement: WatermarkPlacement;
+  repeat: boolean;
   rotation: number;
   text: string;
   onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
@@ -502,7 +519,7 @@ function WatermarkPreviewOverlay({
   onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
 }) {
-  if (placement === "tiled") {
+  if (repeat || placement === "tiled") {
     return (
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         {Array.from({ length: 20 }, (_, index) => {
