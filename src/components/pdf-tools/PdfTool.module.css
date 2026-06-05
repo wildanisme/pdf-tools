@@ -1,0 +1,480 @@
+@reference "../../app/globals.css";
+
+.workspace {
+  @apply min-h-screen p-4 text-slate-950 sm:p-6;
+}
+
+.header {
+  @apply mx-auto mb-5 flex max-w-[1480px] flex-col items-start justify-between gap-4 lg:flex-row lg:items-center;
+}
+
+.brandGroup {
+  @apply flex items-center gap-3.5;
+}
+
+.brandMark {
+  @apply grid size-[46px] place-items-center rounded-xl shadow-[0_14px_30px_rgb(16_185_129_/_22%)];
+  background: linear-gradient(145deg, var(--brand-dark), var(--accent));
+}
+
+.brandMark span {
+  width: 22px;
+  height: 28px;
+  border: 5px solid #ffffff;
+  border-bottom-width: 7px;
+  border-radius: 14px 14px 5px 5px;
+  transform: rotate(28deg);
+}
+
+.eyebrow {
+  @apply mb-0.5 text-xs font-bold uppercase text-emerald-700;
+  letter-spacing: 0;
+}
+
+.header h1 {
+  @apply m-0 text-2xl font-bold;
+  letter-spacing: 0;
+}
+
+.headerDescription {
+  @apply mt-1 max-w-2xl text-sm font-medium text-slate-600;
+}
+
+.headerActions {
+  @apply flex w-full flex-col items-stretch gap-2 lg:w-auto lg:flex-row lg:items-center;
+}
+
+.privacyPill {
+  @apply inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-100/60 px-3 text-sm font-bold text-emerald-700 lg:w-auto;
+}
+
+.toolWorkbench {
+  @apply mx-auto grid max-w-[1180px] gap-4 xl:grid-cols-[minmax(0,1fr)_360px];
+}
+
+.primaryColumn {
+  @apply grid min-w-0 content-start gap-4;
+}
+
+.documentPanel,
+.previewPanel,
+.actionPanel {
+  @apply min-w-0 rounded-lg border border-slate-200 bg-white shadow-[0_18px_45px_rgb(15_23_42_/_10%)];
+}
+
+.documentPanel,
+.actionPanel {
+  @apply p-3.5;
+}
+
+.actionPanel {
+  @apply h-fit xl:sticky xl:top-6;
+}
+
+.sectionHeader,
+.fileListHeader,
+.previewToolbar {
+  @apply flex items-center justify-between gap-3 text-xs font-extrabold uppercase text-slate-600;
+  letter-spacing: 0;
+}
+
+.dropzone {
+  @apply grid gap-3 rounded-lg border border-dashed border-emerald-500/45 bg-emerald-100/30 p-4;
+}
+
+.dropzone h2,
+.optionBlock h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.dropzone p,
+.optionBlock p,
+.emptyState p,
+.previewEmpty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.fileListHeader {
+  margin: 16px 0 10px;
+}
+
+.fileList {
+  @apply grid gap-2;
+}
+
+.imageListLarge {
+  @apply grid gap-2;
+}
+
+.imageItem {
+  @apply grid min-h-14 grid-cols-[20px_minmax(0,1fr)] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800;
+}
+
+.imageItem span {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.emptyState,
+.previewEmpty {
+  @apply grid min-h-36 place-items-center rounded-lg border border-slate-200 bg-slate-50 p-4 text-center;
+}
+
+.fileItem,
+.fileItemActive {
+  @apply grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-slate-200 bg-white;
+}
+
+.fileItemActive {
+  @apply border-emerald-500/45 bg-emerald-50;
+}
+
+.fileMainButton {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.fileMainButton strong,
+.fileMainButton small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileMainButton strong {
+  font-size: 0.9rem;
+}
+
+.fileMainButton small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.fileActions {
+  display: flex;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.fileActions button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.previewPanel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.previewToolbar {
+  min-height: 56px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.previewToolbar strong {
+  display: block;
+  overflow: hidden;
+  max-width: 52ch;
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.previewToolbar small {
+  color: var(--brand-dark);
+  font-weight: 800;
+  text-transform: none;
+}
+
+.pageStrip {
+  @apply flex gap-1.5 overflow-x-auto border-b border-slate-200 bg-slate-50 px-3.5 py-2.5;
+}
+
+.pageChip,
+.pageChipActive {
+  @apply h-8 min-w-9 flex-none rounded-md border border-slate-200 bg-white text-xs font-extrabold text-slate-600;
+}
+
+.pageChipActive {
+  @apply border-emerald-500 bg-emerald-500 text-white;
+}
+
+.previewSurface {
+  min-height: 420px;
+  padding: 14px;
+  background:
+    linear-gradient(45deg, #f1f5f9 25%, transparent 25%),
+    linear-gradient(-45deg, #f1f5f9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f1f5f9 75%),
+    linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
+  background-color: #ffffff;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0;
+  background-size: 20px 20px;
+}
+
+.previewSurfaceCompact {
+  min-height: 360px;
+  padding: 14px;
+  background:
+    linear-gradient(45deg, #f1f5f9 25%, transparent 25%),
+    linear-gradient(-45deg, #f1f5f9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f1f5f9 75%),
+    linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
+  background-color: #ffffff;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0;
+  background-size: 20px 20px;
+}
+
+.pdfFrame {
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 188px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.pdfFrameCompact {
+  width: 100%;
+  height: 520px;
+  max-height: 58vh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.previewEmpty {
+  height: 100%;
+  min-height: calc(100vh - 188px);
+}
+
+.optionBlock {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.optionStack {
+  @apply mt-3.5 grid gap-3;
+}
+
+.metricRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.metricRow strong {
+  color: var(--ink);
+}
+
+.inputLabel {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.field {
+  @apply grid gap-1.5;
+}
+
+.field span {
+  @apply text-xs font-extrabold text-slate-600;
+}
+
+.field small,
+.helpText {
+  @apply text-xs leading-snug text-slate-600;
+}
+
+.textInput {
+  @apply min-h-10 w-full rounded-lg border border-slate-200 px-3 text-slate-950;
+}
+
+.textarea {
+  @apply min-h-28 w-full resize-y rounded-lg border border-slate-200 px-3 py-2.5 text-slate-950;
+}
+
+.imageList,
+.historyList {
+  display: grid;
+  gap: 8px;
+}
+
+.imageList span {
+  overflow: hidden;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyList p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.historyItem {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+}
+
+.historyItem strong,
+.historyItem span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyItem span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.primaryButton,
+.secondaryButton {
+  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3.5 font-extrabold;
+}
+
+.primaryButton {
+  @apply border border-emerald-500 bg-emerald-500 text-white;
+}
+
+.primaryButton:hover:not(:disabled) {
+  @apply border-emerald-700 bg-emerald-700;
+}
+
+.secondaryButton {
+  @apply border border-slate-200 bg-white text-slate-950;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  @apply border-emerald-500/35 bg-emerald-50;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.52;
+}
+
+.actionButtons {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.errorBox,
+.successBox {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.errorBox {
+  border: 1px solid rgb(220 38 38 / 25%);
+  background: rgb(220 38 38 / 8%);
+  color: #991b1b;
+}
+
+.successBox {
+  border: 1px solid rgb(16 185 129 / 25%);
+  background: rgb(167 243 208 / 24%);
+  color: var(--brand-dark);
+}
+
+.successBox span {
+  color: var(--muted);
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1180px) {
+  .previewPanel,
+  .actionPanel {
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 760px) {
+  .toolWorkbench {
+    @apply gap-3;
+  }
+
+  .previewSurface,
+  .previewSurfaceCompact,
+  .pdfFrame,
+  .pdfFrameCompact,
+  .previewEmpty {
+    min-height: 360px;
+    height: 360px;
+  }
+}
