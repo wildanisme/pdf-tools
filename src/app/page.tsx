@@ -132,14 +132,14 @@ export default function Home() {
                   {category}
                 </h3>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 text-center">
                 {items.map((tool) => {
                   const Icon = getIcon(tool);
 
                   return (
                     <Link
                       key={tool.slug}
-                      className="group min-h-40 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-[0_18px_45px_rgb(15_23_42_/_10%)]"
+                      className="group flex flex-col items-center justify-center min-h-40 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-[0_18px_45px_rgb(15_23_42_/_10%)]"
                       href={`/${tool.slug}`}
                     >
                       <span className="mb-5 grid size-12 place-items-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white">
