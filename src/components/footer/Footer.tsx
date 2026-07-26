@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 const Footer = () => {
   return (
@@ -7,23 +8,23 @@ const Footer = () => {
         <div>
           <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Products</h3>
           <ul className="mt-4 space-y-4">
-            <li><a href="https://pospercetakan.com?utm_source=pdf.wildanisme.com" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">Aplikasi POS Percetakan</a></li>
-            <li><a href="https://tatakeu.id?utm_source=pdf.wildanisme.com" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">Aplikasi Tata Keuangan Sekolah</a></li>
+            <li><a href="https://pospercetakan.com?utm_source=pdf.wildanisme.com" target='_blank' rel="noopener noreferrer" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Aplikasi POS Percetakan</a></li>
+            <li><a href="https://tatakeu.id?utm_source=pdf.wildanisme.com" target='_blank' rel="noopener noreferrer" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Aplikasi Tata Keuangan Sekolah</a></li>
           </ul>
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Company</h3>
           <ul className="mt-4 space-y-4">
             <li><a href="https://motekarindo.co.id" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Motekar Teknologi Indonesia</a></li>
-            <li><a href="https://summitct.co.id?utm_source=pdf.wildanisme.com" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">Summit Citra Teknologi</a></li>
-            <li><a href="https://wildanisme.com" target='_blank' className="text-base text-gray-500 hover:text-gray-900 text-wrap">Wildanisme</a></li>
+            <li><a href="https://summitct.co.id?utm_source=pdf.wildanisme.com" target='_blank' rel="noopener noreferrer" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Summit Citra Teknologi</a></li>
+            <li><a href="https://wildanisme.com" target='_blank' rel="noopener noreferrer" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Wildanisme</a></li>
           </ul>
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Legal</h3>
           <ul className="mt-4 space-y-4">
-            <li><a href="#" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Privacy Policy</a></li>
-            <li><a href="#" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Terms of Service</a></li>
+            <li><Link href="/privacy-policy" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Privacy Policy</Link></li>
+            <li><Link href="/terms-of-service" className="text-base text-gray-500 hover:text-gray-900 text-wrap">Terms of Service</Link></li>
           </ul>
         </div>
       </div>

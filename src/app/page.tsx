@@ -22,11 +22,37 @@ import Link from "next/link";
 import type { ComponentType } from "react";
 import type { PdfToolId } from "@/lib/pdf/types";
 import { toolCatalog, toolCategories } from "@/lib/tools/catalog";
+import { SITE_URL, SITE_NAME } from "@/lib/constants";
+import { OrganizationSchema } from "@/components/seo/Schema";
 
 export const metadata: Metadata = {
   title: "Privacy-First PDF Tools for Modern Workflows",
   description:
     "Work on PDFs without giving them away. A complete suite of 20+ free, client-side PDF tools to merge, extract, sign, compress, and convert documents directly in your browser.",
+  openGraph: {
+    title: "Privacy-First PDF Tools for Modern Workflows",
+    description:
+      "Work on PDFs without giving them away. A complete suite of 20+ free, client-side PDF tools to merge, extract, sign, compress, and convert documents directly in your browser.",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    images: [
+      {
+        url: `${SITE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy-First PDF Tools for Modern Workflows",
+    description:
+      "Work on PDFs without giving them away. A complete suite of 20+ free, client-side PDF tools to merge, extract, sign, compress, and convert documents directly in your browser.",
+    images: [`${SITE_URL}/og-image.png`],
+  },
+  alternates: {
+    canonical: SITE_URL,
+  },
 };
 
 const iconMap: Record<PdfToolId | "crop" | "resize" | "nup", ComponentType<{ className?: string; size?: number }>> = {
@@ -52,6 +78,7 @@ const iconMap: Record<PdfToolId | "crop" | "resize" | "nup", ComponentType<{ cla
 export default function Home() {
   return (
     <main className="px-4 py-5 sm:px-6 lg:px-9 lg:py-10">
+      <OrganizationSchema />
       <section className="mb-9 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_45px_rgb(15_23_42_/_10%)]">
         <div className="grid gap-7 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_340px] xl:p-12">
           <div className="flex min-w-0 flex-col justify-center">
